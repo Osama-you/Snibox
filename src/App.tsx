@@ -8,6 +8,7 @@ import { WINDOW } from "@/styles/tokens";
 import { Launcher } from "@/components/Launcher/Launcher";
 import { Editor } from "@/components/Editor/Editor";
 import { RestoreDraft } from "@/components/Shared/RestoreDraft";
+import { UpdateBanner } from "@/components/Shared/UpdateBanner";
 
 export default function App() {
   const mode = useSnippetStore((s) => s.mode);
@@ -78,6 +79,7 @@ export default function App() {
 
   return (
     <div className="window-container">
+      {mode === "launcher" && <UpdateBanner />}
       {pendingDraft && mode === "launcher" && (
         <RestoreDraft onRestore={handleRestoreDraft} onDiscard={handleDiscardDraft} />
       )}
