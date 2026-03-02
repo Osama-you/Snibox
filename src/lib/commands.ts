@@ -42,7 +42,9 @@ export const commands = {
   updateSnippet: (id: string, title: string | null, content: string, tags: string[]) =>
     invoke<SnippetWithTags>("update_snippet", { id, title, content, tags }),
   deleteSnippet: (id: string) =>
-    invoke("delete_snippet", { id }),
+    invoke<SnippetWithTags>("delete_snippet", { id }),
+  restoreSnippet: (id: string, title: string | null, content: string, pinned: boolean, tags: string[]) =>
+    invoke<SnippetWithTags>("restore_snippet", { id, title, content, pinned, tags }),
   togglePin: (id: string) =>
     invoke<boolean>("toggle_pin", { id }),
   recordUsed: (id: string) =>

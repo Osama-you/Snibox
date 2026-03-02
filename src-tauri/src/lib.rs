@@ -90,6 +90,7 @@ pub fn run() {
             commands::snippets::create_snippet,
             commands::snippets::update_snippet,
             commands::snippets::delete_snippet,
+            commands::snippets::restore_snippet,
             commands::snippets::toggle_pin,
             commands::snippets::record_used,
             commands::clipboard::copy_to_clipboard,

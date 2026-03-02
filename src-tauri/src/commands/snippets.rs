@@ -269,11 +269,53 @@ pub fn update_snippet(
 }
 
 #[tauri::command]
-pub fn delete_snippet(state: State<AppState>, id: String) -> Result<(), String> {
+pub fn delete_snippet(state: State<AppState>, id: String) -> Result<SnippetWithTags, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
+
+    let snippet = conn
+        .query_row(
+            "SELECT id, title, content, pinned, created_at, updated_at, last_used_at, use_count FROM snippets WHERE id = ?1",
+            rusqlite::params![id],
+            row_to_snippet,
+        )
+        .map_err(|e| e.to_string())?;
+    let tags = get_tags_for_snippet(&conn, &id)?;
+
     conn.execute("DELETE FROM snippets WHERE id = ?1", rusqlite::params![id])
         .map_err(|e| e.to_string())?;
-    Ok(())
+
+    Ok(SnippetWithTags { snippet, tags })
+}
+
+#[tauri::command]
+pub fn restore_snippet(
+    state: State<AppState>,
+    id: String,
+    title: Option<String>,
+    content: String,
+    pinned: bool,
+    tags: Vec<String>,
+) -> Result<SnippetWithTags, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "INSERT INTO snippets (id, title, content, pinned) VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params![id, title, content, pinned as i64],
+    )
+    .map_err(|e| e.to_string())?;
+
+    set_tags_for_snippet(&conn, &id, &tags)?;
+
+    let snippet = conn
+        .query_row(
+            "SELECT id, title, content, pinned, created_at, updated_at, last_used_at, use_count FROM snippets WHERE id = ?1",
+            rusqlite::params![id],
+            row_to_snippet,
+        )
+        .map_err(|e| e.to_string())?;
+
+    let tag_names = get_tags_for_snippet(&conn, &id)?;
+    Ok(SnippetWithTags { snippet, tags: tag_names })
 }
 
 #[tauri::command]
