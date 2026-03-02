@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSnippetStore } from "@/stores/snippetStore";
 import { useEditorStore } from "@/stores/editorStore";
 import { useKeybind, EDITOR_BINDS } from "@/lib/keybinds";
@@ -8,6 +8,8 @@ import { ContentArea } from "./ContentArea";
 import { TagsInput } from "./TagsInput";
 import { EditorActions } from "./EditorActions";
 import { ConfirmDialog } from "../Shared/ConfirmDialog";
+
+const DRAFT_DEBOUNCE_MS = 500;
 
 export function Editor() {
   const editingSnippetId = useSnippetStore((s) => s.editingSnippetId);
@@ -19,6 +21,7 @@ export function Editor() {
   const initEditor = useEditorStore((s) => s.initEditor);
   const reset = useEditorStore((s) => s.reset);
   const [showConfirm, setShowConfirm] = useState(false);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (editingSnippetId) {
@@ -29,6 +32,19 @@ export function Editor() {
       initEditor("", "", []);
     }
   }, [editingSnippetId, initEditor]);
+
+  useEffect(() => {
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      if (title || content || tags.length > 0) {
+        commands.saveDraft(editingSnippetId ?? null, title, content, tags);
+      }
+    }, DRAFT_DEBOUNCE_MS);
+
+    return () => {
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    };
+  }, [title, content, tags, editingSnippetId]);
 
   const handleSave = useCallback(async () => {
     if (editingSnippetId) {
@@ -45,6 +61,7 @@ export function Editor() {
     if (isDirty) {
       setShowConfirm(true);
     } else {
+      commands.discardDraft();
       reset();
       closeEditor();
     }
