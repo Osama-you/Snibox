@@ -71,11 +71,18 @@ fn register_global_hotkey(app: &tauri::App) -> Result<(), Box<dyn std::error::Er
 pub fn run() {
     let conn = db::init_db().expect("Failed to initialize database");
 
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_process::init());
+
+    // Only register updater in release builds — dev has no valid signing key
+    #[cfg(not(debug_assertions))]
+    {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+
+    builder
         .manage(AppState {
             db: Mutex::new(conn),
         })
