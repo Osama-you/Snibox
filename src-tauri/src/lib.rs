@@ -47,23 +47,49 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn register_global_hotkey(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    let shortcut: Shortcut = "CmdOrCtrl+Shift+Space".parse()?;
+fn toggle_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        if window.is_visible().unwrap_or(false) {
+            let _ = window.hide();
+        } else {
+            let _ = window.show();
+            let _ = window.set_focus();
+            let _ = window.emit("window-shown", ());
+        }
+    }
+}
 
-    app.global_shortcut().on_shortcut(shortcut, move |app, _shortcut, event| {
-        if event.state == ShortcutState::Pressed {
-            if let Some(window) = app.get_webview_window("main") {
-                if window.is_visible().unwrap_or(false) {
-                    let _ = window.hide();
-                } else {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                    let _ = window.emit("window-shown", ());
+fn register_global_hotkey(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    let shortcuts_to_try = [
+        "CmdOrCtrl+Shift+Space",
+        "CmdOrCtrl+Space",
+        "Super+Shift+S",
+    ];
+
+    for shortcut_str in &shortcuts_to_try {
+        match shortcut_str.parse::<Shortcut>() {
+            Ok(shortcut) => {
+                match app.global_shortcut().on_shortcut(shortcut, move |app, _shortcut, event| {
+                    if event.state == ShortcutState::Pressed {
+                        toggle_main_window(app);
+                    }
+                }) {
+                    Ok(()) => {
+                        eprintln!("[snibox] Global hotkey registered: {}", shortcut_str);
+                        return Ok(());
+                    }
+                    Err(e) => {
+                        eprintln!("[snibox] Failed to register {}: {}", shortcut_str, e);
+                    }
                 }
             }
+            Err(e) => {
+                eprintln!("[snibox] Failed to parse shortcut {}: {}", shortcut_str, e);
+            }
         }
-    })?;
+    }
 
+    eprintln!("[snibox] WARNING: No global hotkey could be registered. Use the tray icon to toggle the window.");
     Ok(())
 }
 
