@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSnippetStore } from "@/stores/snippetStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useVaultStore } from "@/stores/vaultStore";
+import { useDriveStore } from "@/stores/driveStore";
 import { useKeybind, LAUNCHER_BINDS } from "@/lib/keybinds";
 import { commands, type SnippetWithTags } from "@/lib/commands";
 import { SearchInput } from "./SearchInput";
@@ -29,6 +30,8 @@ export function Launcher() {
   const closeAfterCopy = useSettingsStore((s) => s.closeAfterCopy);
   const syncStatus = useVaultStore((s) => s.syncStatus);
   const enabled = useVaultStore((s) => s.enabled);
+  const driveConnected = useDriveStore((s) => s.connected);
+  const driveSyncStatus = useDriveStore((s) => s.syncStatus);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -68,10 +71,10 @@ export function Launcher() {
     await refreshSnippets();
   }, [snippets, selectedIndex, refreshSnippets]);
 
-  const handleDelete = useCallback(async () => {
-    const selected = snippets[selectedIndex];
-    if (!selected) return;
-    const deleted = await commands.deleteSnippet(selected.id);
+  const handleDelete = useCallback(async (snippetId?: string) => {
+    const id = snippetId ?? snippets[selectedIndex]?.id;
+    if (!id) return;
+    const deleted = await commands.deleteSnippet(id);
     setPendingDelete({ snippet: deleted });
     await refreshSnippets();
   }, [snippets, selectedIndex, refreshSnippets]);
@@ -99,7 +102,7 @@ export function Launcher() {
     copy: handleCopy,
     pin: handlePin,
     edit: handleEdit,
-    delete: handleDelete,
+    delete: () => handleDelete(),
     close: handleClose,
   });
 
@@ -121,6 +124,7 @@ export function Launcher() {
               index={index}
               isSelected={index === selectedIndex}
               onClick={() => selectIndex(index)}
+              onDelete={() => handleDelete(snippet.id)}
             />
           ))}
         </div>
@@ -137,9 +141,28 @@ export function Launcher() {
                 "bg-gray-400"
               }`} />
               <span className="text-snippet-meta text-text-subtle">
-                {syncStatus === "idle" ? "Synced" :
+                {syncStatus === "idle" ? "Vault" :
                  syncStatus === "syncing" ? "Syncing…" :
                  syncStatus === "conflicts" ? "Conflicts" :
+                 ""}
+              </span>
+            </div>
+          )}
+          {driveConnected && (
+            <div className="flex items-center gap-xs">
+              <div className={`w-1.5 h-1.5 rounded-full ${
+                driveSyncStatus === "idle" ? "bg-green-500" :
+                driveSyncStatus === "syncing" ? "bg-blue-500" :
+                driveSyncStatus === "offline" ? "bg-yellow-500" :
+                driveSyncStatus === "auth_needed" || driveSyncStatus === "error" ? "bg-red-500" :
+                "bg-gray-400"
+              }`} />
+              <span className="text-snippet-meta text-text-subtle">
+                {driveSyncStatus === "idle" ? "Drive" :
+                 driveSyncStatus === "syncing" ? "Drive…" :
+                 driveSyncStatus === "offline" ? "Offline" :
+                 driveSyncStatus === "auth_needed" ? "Auth" :
+                 driveSyncStatus === "error" ? "Error" :
                  ""}
               </span>
             </div>

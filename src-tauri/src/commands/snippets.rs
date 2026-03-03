@@ -227,6 +227,12 @@ pub fn create_snippet(
         }
     }
 
+    if let Ok(drive) = state.drive.try_lock() {
+        if let Some(mgr) = drive.as_ref() {
+            mgr.enqueue_push(&result.snippet.id);
+        }
+    }
+
     Ok(result)
 }
 
@@ -285,6 +291,12 @@ pub fn update_snippet(
         }
     }
 
+    if let Ok(drive) = state.drive.try_lock() {
+        if let Some(mgr) = drive.as_ref() {
+            mgr.enqueue_push(&result.snippet.id);
+        }
+    }
+
     Ok(result)
 }
 
@@ -311,6 +323,12 @@ pub fn delete_snippet(state: State<AppState>, id: String) -> Result<SnippetWithT
     if let Ok(vault) = state.vault.lock() {
         if let Some(vault_manager) = vault.as_ref() {
             let _ = vault_manager.delete_snippet(&id);
+        }
+    }
+
+    if let Ok(drive) = state.drive.try_lock() {
+        if let Some(mgr) = drive.as_ref() {
+            mgr.enqueue_delete(&id);
         }
     }
 
@@ -355,6 +373,12 @@ pub fn restore_snippet(
         }
     }
 
+    if let Ok(drive) = state.drive.try_lock() {
+        if let Some(mgr) = drive.as_ref() {
+            mgr.enqueue_push(&result.snippet.id);
+        }
+    }
+
     Ok(result)
 }
 
@@ -390,6 +414,12 @@ pub fn toggle_pin(state: State<AppState>, id: String) -> Result<bool, String> {
         if let Some(vault_manager) = vault.as_ref() {
             let snippet_with_tags = SnippetWithTags { snippet, tags };
             let _ = vault_manager.write_snippet(&snippet_with_tags);
+        }
+    }
+
+    if let Ok(drive) = state.drive.try_lock() {
+        if let Some(mgr) = drive.as_ref() {
+            mgr.enqueue_push(&id);
         }
     }
 

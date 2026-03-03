@@ -13,6 +13,8 @@
     "updater:default",
     "process:allow-restart",
     "process:allow-exit",
-    "dialog:default"
+    "dialog:default",
+    "oauth:default",
+    "opener:default"
   ]
 }

@@ -23,3 +23,11 @@ pub fn init_db() -> Result<Connection> {
 
     Ok(conn)
 }
+
+pub fn open_connection() -> Result<Connection> {
+    let db_path = get_db_path();
+    let conn = Connection::open(db_path)?;
+    conn.execute_batch("PRAGMA journal_mode=WAL;")?;
+    conn.execute_batch("PRAGMA foreign_keys=ON;")?;
+    Ok(conn)
+}

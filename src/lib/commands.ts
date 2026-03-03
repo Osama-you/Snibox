@@ -37,6 +37,20 @@ export interface SyncStats {
   conflicts: number;
 }
 
+export interface DriveStatus {
+  connected: boolean;
+  storageMode: string | null;
+  syncStatus: string;
+  lastSynced: string | null;
+  conflictCount: number;
+}
+
+export interface OAuthStartResult {
+  authUrl: string;
+  redirectPort: number;
+  codeVerifier: string;
+}
+
 export const commands = {
   appReady: () => invoke("app_ready"),
 
@@ -87,4 +101,15 @@ export const commands = {
     invoke<number>("export_to_vault"),
   syncVault: () =>
     invoke("sync_vault"),
+
+  driveStartAuth: () =>
+    invoke<OAuthStartResult>("drive_start_auth"),
+  driveCompleteAuth: (authCode: string, redirectPort: number, codeVerifier: string, storageMode: string) =>
+    invoke("drive_complete_auth", { authCode, redirectPort, codeVerifier, storageMode }),
+  driveDisconnect: () =>
+    invoke("drive_disconnect"),
+  driveGetStatus: () =>
+    invoke<DriveStatus>("drive_get_status"),
+  driveSync: () =>
+    invoke("drive_sync"),
 };

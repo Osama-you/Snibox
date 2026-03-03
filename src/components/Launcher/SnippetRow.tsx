@@ -7,9 +7,10 @@ interface SnippetRowProps {
   index: number;
   isSelected: boolean;
   onClick: () => void;
+  onDelete: () => void;
 }
 
-export function SnippetRow({ snippet, index, isSelected, onClick }: SnippetRowProps) {
+export function SnippetRow({ snippet, index, isSelected, onClick, onDelete }: SnippetRowProps) {
   const searchQuery = useSnippetStore((s) => s.searchQuery);
   const title = snippet.title || "Untitled";
   const preview = truncatePreview(snippet.content);
@@ -17,10 +18,10 @@ export function SnippetRow({ snippet, index, isSelected, onClick }: SnippetRowPr
   const previewParts = highlightMatches(preview, searchQuery);
 
   return (
-    <button
+    <div
       data-index={index}
       onClick={onClick}
-      className={`w-full h-[56px] px-md flex items-center gap-sm text-left
+      className={`group w-full h-[56px] px-md flex items-center gap-sm text-left
                   transition-colors duration-75 border-l-2 cursor-default
                   ${
                     isSelected
@@ -69,6 +70,20 @@ export function SnippetRow({ snippet, index, isSelected, onClick }: SnippetRowPr
           ))}
         </div>
       )}
-    </button>
+
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        className="flex-shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100
+                   text-text-subtle hover:text-red-500 transition-opacity duration-75 p-1 -mr-1"
+        title="Delete snippet"
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <path fillRule="evenodd" d="M6.5 1.75a.25.25 0 01.25-.25h2.5a.25.25 0 01.25.25V3h-3V1.75zm4.5 0V3h2.25a.75.75 0 010 1.5H2.75a.75.75 0 010-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75zM4.496 6.675a.75.75 0 10-1.492.15l.66 6.6A1.75 1.75 0 005.405 15h5.19a1.75 1.75 0 001.741-1.575l.66-6.6a.75.75 0 00-1.492-.15l-.66 6.6a.25.25 0 01-.249.225h-5.19a.25.25 0 01-.249-.225l-.66-6.6z" clipRule="evenodd" />
+        </svg>
+      </button>
+    </div>
   );
 }

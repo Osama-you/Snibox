@@ -1,6 +1,16 @@
 use rusqlite::{Connection, Result};
 
 pub fn run_migrations(conn: &Connection) -> Result<()> {
+    // Migrate old drive_sync table: rename etag -> version
+    let has_etag: bool = conn
+        .prepare("SELECT COUNT(*) FROM pragma_table_info('drive_sync') WHERE name = 'etag'")
+        .and_then(|mut s| s.query_row([], |r| r.get::<_, i64>(0)))
+        .unwrap_or(0)
+        > 0;
+    if has_etag {
+        conn.execute_batch("ALTER TABLE drive_sync RENAME COLUMN etag TO version;")?;
+    }
+
     conn.execute_batch(
         "
         CREATE TABLE IF NOT EXISTS snippets (
@@ -64,6 +74,21 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             INSERT INTO snippets_fts(rowid, title, content)
             VALUES (new.rowid, new.title, new.content);
         END;
+
+        -- Google Drive sync mapping
+        CREATE TABLE IF NOT EXISTS drive_sync (
+            snippet_id    TEXT PRIMARY KEY,
+            drive_file_id TEXT NOT NULL,
+            modified_time TEXT NOT NULL,
+            version       TEXT,
+            md5_checksum  TEXT,
+            synced_at     TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS drive_state (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
 
         -- Default settings
         INSERT OR IGNORE INTO settings (key, value) VALUES ('close_on_blur_launcher', 'true');

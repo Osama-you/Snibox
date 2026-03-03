@@ -4,6 +4,7 @@ import { useSnippetStore } from "@/stores/snippetStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useEditorStore } from "@/stores/editorStore";
 import { useVaultStore } from "@/stores/vaultStore";
+import { useDriveStore } from "@/stores/driveStore";
 import { commands, type Draft } from "@/lib/commands";
 import { WINDOW } from "@/styles/tokens";
 import { Launcher } from "@/components/Launcher/Launcher";
@@ -20,11 +21,14 @@ export default function App() {
   const closeOnBlur = useSettingsStore((s) => s.closeOnBlur);
   const initEditor = useEditorStore((s) => s.initEditor);
   const loadVaultStatus = useVaultStore((s) => s.loadVaultStatus);
+  const loadDriveStatus = useDriveStore((s) => s.loadDriveStatus);
+  const setDriveSyncStatus = useDriveStore((s) => s.setSyncStatus);
   const [pendingDraft, setPendingDraft] = useState<Draft | null>(null);
 
   useEffect(() => {
     loadSettings();
     loadVaultStatus();
+    loadDriveStatus();
     commands.appReady();
 
     commands.getDraft().then((draft) => {
@@ -32,7 +36,7 @@ export default function App() {
         setPendingDraft(draft);
       }
     });
-  }, [loadSettings, loadVaultStatus]);
+  }, [loadSettings, loadVaultStatus, loadDriveStatus]);
 
   useEffect(() => {
     const height = mode === "editor" || mode === "settings" ? WINDOW.editorHeight : WINDOW.launcherHeight;
@@ -57,11 +61,24 @@ export default function App() {
       refreshSnippets();
     });
 
+    const unlistenDriveStatus = listen<string>("drive-sync-status", (event) => {
+      setDriveSyncStatus(event.payload as "idle" | "syncing" | "error" | "auth_needed" | "offline");
+      if (event.payload === "idle") {
+        refreshSnippets();
+      }
+    });
+
+    const unlistenDriveAuth = listen("drive-auth-needed", () => {
+      setDriveSyncStatus("auth_needed");
+    });
+
     return () => {
       unlistenWindowShown.then((fn) => fn());
       unlistenVaultChanged.then((fn) => fn());
+      unlistenDriveStatus.then((fn) => fn());
+      unlistenDriveAuth.then((fn) => fn());
     };
-  }, [refreshSnippets]);
+  }, [refreshSnippets, setDriveSyncStatus]);
 
   const handleBlur = useCallback(() => {
     if (mode === "launcher" && closeOnBlur) {

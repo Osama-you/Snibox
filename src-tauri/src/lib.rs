@@ -1,5 +1,6 @@
 mod commands;
 mod db;
+mod drive;
 mod state;
 mod vault;
 
@@ -118,7 +119,9 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_dialog::init());
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_oauth::init())
+        .plugin(tauri_plugin_opener::init());
 
     // Only register updater in release builds — dev has no valid signing key
     #[cfg(not(debug_assertions))]
@@ -131,6 +134,7 @@ pub fn run() {
             db: Mutex::new(conn),
             vault: Mutex::new(None),
             watcher: Mutex::new(None),
+            drive: tokio::sync::Mutex::new(None),
         })
         .invoke_handler(tauri::generate_handler![
             commands::window::toggle_window,
@@ -157,6 +161,11 @@ pub fn run() {
             commands::vault::clear_vault_folder,
             commands::vault::export_to_vault,
             commands::vault::sync_vault,
+            commands::drive::drive_start_auth,
+            commands::drive::drive_complete_auth,
+            commands::drive::drive_disconnect,
+            commands::drive::drive_get_status,
+            commands::drive::drive_sync,
         ])
         .setup(|app| {
             setup_tray(app)?;
@@ -184,7 +193,40 @@ pub fn run() {
                     }
                 }
             }
-            
+
+            let reconnect_params = {
+                let ds = app.state::<AppState>();
+                let result = if let Ok(conn) = ds.db.lock() {
+                    drive::read_reconnect_params(&conn).ok().flatten()
+                } else {
+                    None
+                };
+                result
+            };
+
+            if let Some(params) = reconnect_params {
+                let handle_for_drive = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    match drive::reconnect(
+                        env!("GOOGLE_CLIENT_ID"),
+                        env!("GOOGLE_CLIENT_SECRET"),
+                        params,
+                        handle_for_drive.clone(),
+                    )
+                    .await
+                    {
+                        Ok(mgr) => {
+                            let state = handle_for_drive.state::<AppState>();
+                            *state.drive.lock().await = Some(mgr);
+                            eprintln!("[snibox] Google Drive reconnected");
+                        }
+                        Err(e) => {
+                            eprintln!("[snibox] Google Drive reconnect failed: {}", e);
+                        }
+                    }
+                });
+            }
+
             Ok(())
         })
         .run(tauri::generate_context!())
