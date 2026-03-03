@@ -1,4 +1,5 @@
 import { platform } from "@/lib/platform";
+import { useKeybindStore } from "@/stores/keybindStore";
 
 interface EmptyStateProps {
   hasSnippets: boolean;
@@ -6,6 +7,13 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ hasSnippets, searchQuery }: EmptyStateProps) {
+  const newBind = useKeybindStore((s) => s.launcherBinds.new);
+  const shortcutLabel = platform.formatShortcut(
+    newBind.key.toUpperCase(),
+    !!newBind.mod,
+    !!newBind.shift,
+  );
+
   if (!hasSnippets && !searchQuery) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center px-base py-lg">
@@ -15,7 +23,7 @@ export function EmptyState({ hasSnippets, searchQuery }: EmptyStateProps) {
         <p className="text-snippet-body text-text-subtle">
           Press{" "}
           <kbd className="px-xs py-[1px] bg-surface border border-border rounded text-snippet-meta font-mono">
-            {platform.modKey}+N
+            {shortcutLabel}
           </kbd>{" "}
           to create one.
         </p>

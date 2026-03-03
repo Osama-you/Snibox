@@ -3,7 +3,8 @@ import { useSnippetStore } from "@/stores/snippetStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useVaultStore } from "@/stores/vaultStore";
 import { useDriveStore } from "@/stores/driveStore";
-import { useKeybind, LAUNCHER_BINDS } from "@/lib/keybinds";
+import { useKeybind } from "@/lib/keybinds";
+import { useKeybindStore } from "@/stores/keybindStore";
 import { commands, type SnippetWithTags } from "@/lib/commands";
 import { SearchInput } from "./SearchInput";
 import { SnippetRow } from "./SnippetRow";
@@ -32,6 +33,7 @@ export function Launcher() {
   const enabled = useVaultStore((s) => s.enabled);
   const driveConnected = useDriveStore((s) => s.connected);
   const driveSyncStatus = useDriveStore((s) => s.syncStatus);
+  const launcherBinds = useKeybindStore((s) => s.launcherBinds);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -95,7 +97,7 @@ export function Launcher() {
     setQuery(searchQuery.replace(/#\S+/g, "").replace(/tag:\S+/g, "").trim());
   }, [setQuery, searchQuery]);
 
-  useKeybind(LAUNCHER_BINDS, {
+  useKeybind(launcherBinds, {
     new: handleNew,
     moveUp: () => moveSelection(-1),
     moveDown: () => moveSelection(1),

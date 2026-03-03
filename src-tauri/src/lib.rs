@@ -76,12 +76,29 @@ fn toggle_main_window(app: &tauri::AppHandle) {
     }
 }
 
+fn get_global_hotkey_setting(app: &tauri::App) -> Option<String> {
+    let state = app.state::<AppState>();
+    let conn = state.db.lock().ok()?;
+    conn.query_row(
+        "SELECT value FROM settings WHERE key = 'global_hotkey'",
+        [],
+        |row| row.get(0),
+    )
+    .ok()
+}
+
 fn register_global_hotkey(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    let shortcuts_to_try = [
-        "CmdOrCtrl+Shift+Space",
-        "CmdOrCtrl+Space",
-        "Super+Shift+S",
+    let mut shortcuts_to_try = vec![
+        "CmdOrCtrl+Shift+Space".to_string(),
+        "CmdOrCtrl+Space".to_string(),
+        "Super+Shift+S".to_string(),
     ];
+
+    if let Some(custom) = get_global_hotkey_setting(app) {
+        if !custom.is_empty() {
+            shortcuts_to_try.insert(0, custom);
+        }
+    }
 
     for shortcut_str in &shortcuts_to_try {
         match shortcut_str.parse::<Shortcut>() {

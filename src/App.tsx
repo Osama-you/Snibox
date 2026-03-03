@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useSnippetStore } from "@/stores/snippetStore";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useKeybindStore } from "@/stores/keybindStore";
 import { useEditorStore } from "@/stores/editorStore";
 import { useVaultStore } from "@/stores/vaultStore";
 import { useDriveStore } from "@/stores/driveStore";
@@ -18,6 +19,7 @@ export default function App() {
   const openEditor = useSnippetStore((s) => s.openEditor);
   const refreshSnippets = useSnippetStore((s) => s.refreshSnippets);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
+  const loadKeybinds = useKeybindStore((s) => s.loadKeybinds);
   const closeOnBlur = useSettingsStore((s) => s.closeOnBlur);
   const initEditor = useEditorStore((s) => s.initEditor);
   const loadVaultStatus = useVaultStore((s) => s.loadVaultStatus);
@@ -27,6 +29,7 @@ export default function App() {
 
   useEffect(() => {
     loadSettings();
+    loadKeybinds();
     loadVaultStatus();
     loadDriveStatus();
     commands.appReady();
@@ -36,7 +39,7 @@ export default function App() {
         setPendingDraft(draft);
       }
     });
-  }, [loadSettings, loadVaultStatus, loadDriveStatus]);
+  }, [loadSettings, loadKeybinds, loadVaultStatus, loadDriveStatus]);
 
   useEffect(() => {
     const height = mode === "editor" || mode === "settings" ? WINDOW.editorHeight : WINDOW.launcherHeight;

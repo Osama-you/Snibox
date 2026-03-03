@@ -6,6 +6,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { listen } from "@tauri-apps/api/event";
 import { Toast } from "../Shared/Toast";
+import { ShortcutSettings } from "./ShortcutSettings";
 
 interface ToastState {
   message: string;
@@ -197,6 +198,8 @@ export function Settings() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-lg py-lg">
+        <ShortcutSettings />
+
         <section className="mb-xl">
           <h2 className="text-snippet-title font-semibold text-text-primary mb-md">
             Vault Sync

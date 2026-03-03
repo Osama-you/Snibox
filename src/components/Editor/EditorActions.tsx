@@ -1,4 +1,5 @@
 import { platform } from "@/lib/platform";
+import { useKeybindStore } from "@/stores/keybindStore";
 
 interface EditorActionsProps {
   onSave: () => void;
@@ -6,6 +7,13 @@ interface EditorActionsProps {
 }
 
 export function EditorActions({ onSave, onCancel }: EditorActionsProps) {
+  const saveBind = useKeybindStore((s) => s.editorBinds.save);
+  const saveLabel = platform.formatShortcut(
+    saveBind.key === "Enter" ? "Enter" : saveBind.key.toUpperCase(),
+    !!saveBind.mod,
+    !!saveBind.shift,
+  );
+
   return (
     <div className="flex items-center justify-between pt-md">
       <button
@@ -19,7 +27,7 @@ export function EditorActions({ onSave, onCancel }: EditorActionsProps) {
       </button>
       <div className="flex items-center gap-sm">
         <span className="text-snippet-meta text-text-subtle">
-          {platform.modKey}+Enter
+          {saveLabel}
         </span>
         <button
           onClick={onSave}

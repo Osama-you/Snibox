@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSnippetStore } from "@/stores/snippetStore";
 import { useEditorStore } from "@/stores/editorStore";
-import { useKeybind, EDITOR_BINDS } from "@/lib/keybinds";
+import { useKeybind } from "@/lib/keybinds";
+import { useKeybindStore } from "@/stores/keybindStore";
 import { commands } from "@/lib/commands";
 import { TitleInput } from "./TitleInput";
 import { ContentArea } from "./ContentArea";
@@ -20,6 +21,7 @@ export function Editor() {
   const isDirty = useEditorStore((s) => s.isDirty);
   const initEditor = useEditorStore((s) => s.initEditor);
   const reset = useEditorStore((s) => s.reset);
+  const editorBinds = useKeybindStore((s) => s.editorBinds);
   const [showConfirm, setShowConfirm] = useState(false);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -74,7 +76,7 @@ export function Editor() {
     setShowConfirm(false);
   }, [reset, closeEditor]);
 
-  useKeybind(EDITOR_BINDS, {
+  useKeybind(editorBinds, {
     save: handleSave,
     cancel: handleCancel,
   });

@@ -1,13 +1,13 @@
 import { useEffect } from "react";
 import { platform } from "./platform";
 
-interface KeybindDef {
+export interface KeybindDef {
   key: string;
   mod?: boolean;
   shift?: boolean;
 }
 
-export const LAUNCHER_BINDS: Record<string, KeybindDef> = {
+export const DEFAULT_LAUNCHER_BINDS: Record<string, KeybindDef> = {
   new: { key: "n", mod: true },
   moveUp: { key: "ArrowUp" },
   moveDown: { key: "ArrowDown" },
@@ -18,7 +18,7 @@ export const LAUNCHER_BINDS: Record<string, KeybindDef> = {
   close: { key: "Escape" },
 };
 
-export const EDITOR_BINDS: Record<string, KeybindDef> = {
+export const DEFAULT_EDITOR_BINDS: Record<string, KeybindDef> = {
   save: { key: "Enter", mod: true },
   cancel: { key: "Escape" },
 };
