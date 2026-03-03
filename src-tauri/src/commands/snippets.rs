@@ -214,10 +214,20 @@ pub fn create_snippet(
 
     let tag_names = get_tags_for_snippet(&conn, &id)?;
 
-    Ok(SnippetWithTags {
+    let result = SnippetWithTags {
         snippet,
         tags: tag_names,
-    })
+    };
+
+    drop(conn);
+
+    if let Ok(vault) = state.vault.lock() {
+        if let Some(vault_manager) = vault.as_ref() {
+            let _ = vault_manager.write_snippet(&result);
+        }
+    }
+
+    Ok(result)
 }
 
 #[tauri::command]
@@ -262,10 +272,20 @@ pub fn update_snippet(
 
     let tag_names = get_tags_for_snippet(&conn, &id)?;
 
-    Ok(SnippetWithTags {
+    let result = SnippetWithTags {
         snippet,
         tags: tag_names,
-    })
+    };
+
+    drop(conn);
+
+    if let Ok(vault) = state.vault.lock() {
+        if let Some(vault_manager) = vault.as_ref() {
+            let _ = vault_manager.write_snippet(&result);
+        }
+    }
+
+    Ok(result)
 }
 
 #[tauri::command]
@@ -284,7 +304,17 @@ pub fn delete_snippet(state: State<AppState>, id: String) -> Result<SnippetWithT
     conn.execute("DELETE FROM snippets WHERE id = ?1", rusqlite::params![id])
         .map_err(|e| e.to_string())?;
 
-    Ok(SnippetWithTags { snippet, tags })
+    let result = SnippetWithTags { snippet, tags };
+
+    drop(conn);
+
+    if let Ok(vault) = state.vault.lock() {
+        if let Some(vault_manager) = vault.as_ref() {
+            let _ = vault_manager.delete_snippet(&id);
+        }
+    }
+
+    Ok(result)
 }
 
 #[tauri::command]
@@ -315,7 +345,17 @@ pub fn restore_snippet(
         .map_err(|e| e.to_string())?;
 
     let tag_names = get_tags_for_snippet(&conn, &id)?;
-    Ok(SnippetWithTags { snippet, tags: tag_names })
+    let result = SnippetWithTags { snippet, tags: tag_names };
+
+    drop(conn);
+
+    if let Ok(vault) = state.vault.lock() {
+        if let Some(vault_manager) = vault.as_ref() {
+            let _ = vault_manager.write_snippet(&result);
+        }
+    }
+
+    Ok(result)
 }
 
 #[tauri::command]
@@ -334,6 +374,24 @@ pub fn toggle_pin(state: State<AppState>, id: String) -> Result<bool, String> {
             |row| row.get::<_, i64>(0).map(|v| v != 0),
         )
         .map_err(|e| e.to_string())?;
+
+    let snippet = conn
+        .query_row(
+            "SELECT id, title, content, pinned, created_at, updated_at, last_used_at, use_count FROM snippets WHERE id = ?1",
+            rusqlite::params![id],
+            row_to_snippet,
+        )
+        .map_err(|e| e.to_string())?;
+    let tags = get_tags_for_snippet(&conn, &id)?;
+
+    drop(conn);
+
+    if let Ok(vault) = state.vault.lock() {
+        if let Some(vault_manager) = vault.as_ref() {
+            let snippet_with_tags = SnippetWithTags { snippet, tags };
+            let _ = vault_manager.write_snippet(&snippet_with_tags);
+        }
+    }
 
     Ok(pinned)
 }

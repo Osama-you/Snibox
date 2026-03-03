@@ -3,23 +3,28 @@ import { listen } from "@tauri-apps/api/event";
 import { useSnippetStore } from "@/stores/snippetStore";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useEditorStore } from "@/stores/editorStore";
+import { useVaultStore } from "@/stores/vaultStore";
 import { commands, type Draft } from "@/lib/commands";
 import { WINDOW } from "@/styles/tokens";
 import { Launcher } from "@/components/Launcher/Launcher";
 import { Editor } from "@/components/Editor/Editor";
+import { Settings } from "@/components/Settings/Settings";
 import { RestoreDraft } from "@/components/Shared/RestoreDraft";
 import { UpdateBanner } from "@/components/Shared/UpdateBanner";
 
 export default function App() {
   const mode = useSnippetStore((s) => s.mode);
   const openEditor = useSnippetStore((s) => s.openEditor);
+  const refreshSnippets = useSnippetStore((s) => s.refreshSnippets);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const closeOnBlur = useSettingsStore((s) => s.closeOnBlur);
   const initEditor = useEditorStore((s) => s.initEditor);
+  const loadVaultStatus = useVaultStore((s) => s.loadVaultStatus);
   const [pendingDraft, setPendingDraft] = useState<Draft | null>(null);
 
   useEffect(() => {
     loadSettings();
+    loadVaultStatus();
     commands.appReady();
 
     commands.getDraft().then((draft) => {
@@ -27,25 +32,36 @@ export default function App() {
         setPendingDraft(draft);
       }
     });
-  }, [loadSettings]);
+  }, [loadSettings, loadVaultStatus]);
 
   useEffect(() => {
-    const height = mode === "editor" ? WINDOW.editorHeight : WINDOW.launcherHeight;
+    const height = mode === "editor" || mode === "settings" ? WINDOW.editorHeight : WINDOW.launcherHeight;
     commands.setWindowSize(WINDOW.launcherWidth, height);
   }, [mode]);
 
   useEffect(() => {
-    const unlisten = listen("window-shown", () => {
+    const unlistenWindowShown = listen("window-shown", () => {
       const searchInput = document.querySelector<HTMLInputElement>(
         'input[placeholder="Search snippets..."]',
       );
       searchInput?.focus();
       searchInput?.select();
     });
+    
+    const unlistenVaultChanged = listen("vault-snippets-changed", async () => {
+      try {
+        await commands.syncVault();
+      } catch {
+        // vault may have been disabled mid-flight; ignore
+      }
+      refreshSnippets();
+    });
+
     return () => {
-      unlisten.then((fn) => fn());
+      unlistenWindowShown.then((fn) => fn());
+      unlistenVaultChanged.then((fn) => fn());
     };
-  }, []);
+  }, [refreshSnippets]);
 
   const handleBlur = useCallback(() => {
     if (mode === "launcher" && closeOnBlur) {
@@ -83,7 +99,9 @@ export default function App() {
       {pendingDraft && mode === "launcher" && (
         <RestoreDraft onRestore={handleRestoreDraft} onDiscard={handleDiscardDraft} />
       )}
-      {mode === "launcher" ? <Launcher /> : <Editor />}
+      {mode === "launcher" && <Launcher />}
+      {mode === "editor" && <Editor />}
+      {mode === "settings" && <Settings />}
     </div>
   );
 }

@@ -24,6 +24,19 @@ export interface Draft {
   saved_at: string;
 }
 
+export interface VaultStatus {
+  enabled: boolean;
+  vaultFolder: string | null;
+  syncStatus: string;
+}
+
+export interface SyncStats {
+  imported: number;
+  exported: number;
+  updated: number;
+  conflicts: number;
+}
+
 export const commands = {
   appReady: () => invoke("app_ready"),
 
@@ -63,4 +76,15 @@ export const commands = {
     invoke<Draft | null>("get_draft"),
   discardDraft: () =>
     invoke("discard_draft"),
+
+  getVaultStatus: () =>
+    invoke<VaultStatus>("get_vault_status"),
+  setVaultFolder: (path: string) =>
+    invoke<SyncStats>("set_vault_folder", { path }),
+  clearVaultFolder: () =>
+    invoke("clear_vault_folder"),
+  exportToVault: () =>
+    invoke<number>("export_to_vault"),
+  syncVault: () =>
+    invoke("sync_vault"),
 };

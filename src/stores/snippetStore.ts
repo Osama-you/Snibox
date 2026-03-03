@@ -3,7 +3,7 @@ import type { SnippetWithTags } from "@/lib/commands";
 import { commands } from "@/lib/commands";
 import { parseSearchQuery } from "@/lib/search";
 
-type Mode = "launcher" | "editor";
+type Mode = "launcher" | "editor" | "settings";
 
 interface SnippetStore {
   snippets: SnippetWithTags[];
@@ -18,6 +18,7 @@ interface SnippetStore {
   selectIndex: (index: number) => void;
   setMode: (mode: Mode) => void;
   openEditor: (snippetId?: string) => void;
+  openSettings: () => void;
   closeEditor: () => void;
   refreshSnippets: () => Promise<void>;
 }
@@ -54,6 +55,13 @@ export const useSnippetStore = create<SnippetStore>((set, get) => ({
     set({
       mode: "editor",
       editingSnippetId: snippetId ?? null,
+    });
+  },
+
+  openSettings: () => {
+    set({
+      mode: "settings",
+      editingSnippetId: null,
     });
   },
 
