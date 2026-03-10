@@ -2,16 +2,22 @@ mod commands;
 mod db;
 mod drive;
 mod state;
+mod sync_state;
 mod vault;
 
 use rusqlite::Connection;
 use state::AppState;
+use std::collections::HashSet;
+use std::net::TcpListener;
 use std::sync::Mutex;
+use std::thread;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
     tray::TrayIconEvent,
     Emitter, Manager,
 };
+#[cfg(target_os = "linux")]
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 fn get_vault_path_from_settings(conn: &Connection) -> Result<Option<String>, String> {
@@ -76,6 +82,38 @@ fn toggle_main_window(app: &tauri::AppHandle) {
     }
 }
 
+fn start_local_toggle_listener(app: &tauri::AppHandle) {
+    let app_handle = app.clone();
+    thread::spawn(move || {
+        let listener = match TcpListener::bind("127.0.0.1:17391") {
+            Ok(listener) => listener,
+            Err(e) => {
+                eprintln!("[snibox] Local toggle listener unavailable on 127.0.0.1:17391: {}", e);
+                return;
+            }
+        };
+
+        eprintln!("[snibox] Local toggle listener ready on 127.0.0.1:17391");
+
+        for stream in listener.incoming() {
+            match stream {
+                Ok(_) => {
+                    let handle = app_handle.clone();
+                    if let Err(e) = handle.run_on_main_thread({
+                        let handle_for_ui = handle.clone();
+                        move || toggle_main_window(&handle_for_ui)
+                    }) {
+                        eprintln!("[snibox] Failed to toggle from local listener: {}", e);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("[snibox] Local toggle listener error: {}", e);
+                }
+            }
+        }
+    });
+}
+
 fn get_global_hotkey_setting(app: &tauri::App) -> Option<String> {
     let state = app.state::<AppState>();
     let conn = state.db.lock().ok()?;
@@ -87,12 +125,97 @@ fn get_global_hotkey_setting(app: &tauri::App) -> Option<String> {
     .ok()
 }
 
+fn set_global_hotkey_setting(app: &tauri::App, value: &str) {
+    let state = app.state::<AppState>();
+    let conn_lock = state.db.lock();
+    if let Ok(conn) = conn_lock {
+        let _ = conn.execute(
+            "INSERT INTO settings (key, value) VALUES ('global_hotkey', ?1)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            [value],
+        );
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn is_wayland_session() -> bool {
+    std::env::var("XDG_SESSION_TYPE")
+        .map(|v| v.eq_ignore_ascii_case("wayland"))
+        .unwrap_or(false)
+        || std::env::var_os("WAYLAND_DISPLAY").is_some()
+}
+
+#[cfg(target_os = "linux")]
+fn is_waydroid_session() -> bool {
+    std::env::vars_os().any(|(k, _)| k.to_string_lossy().starts_with("WAYDROID"))
+}
+
+#[cfg(target_os = "linux")]
+fn show_wayland_hotkey_help(app: &tauri::App, registered: Option<&str>, always_show: bool) {
+    let mut message = String::new();
+    if let Some(shortcut) = registered {
+        message.push_str(&format!(
+            "Snibox registered this shortcut: {shortcut}\n\
+If pressing it does not open Snibox, your compositor/session is intercepting it.\n\n"
+        ));
+    } else {
+        message.push_str("Snibox could not register a global shortcut on your Wayland/Waydroid session.\n\n");
+    }
+
+    if always_show {
+        message.push_str("Wayland/Waydroid sessions can block global shortcuts from desktop apps.\n\n");
+    }
+
+    message.push_str(
+        "To fix this, free one of these shortcuts in System Settings -> Keyboard -> Keyboard Shortcuts:\n\
+- Ctrl+Shift+Space\n\
+- Ctrl+Space\n\
+- Ctrl+Alt+S\n\
+\n\
+Ubuntu quick commands (run in terminal):\n\
+gsettings set org.gnome.desktop.wm.keybindings switch-input-source \"[]\"\n\
+gsettings set org.gnome.desktop.wm.keybindings switch-input-source-backward \"[]\"\n\
+gsettings set org.freedesktop.ibus.general.hotkey trigger \"[]\"\n\
+gsettings set org.freedesktop.ibus.general.hotkey triggers \"[]\"\n\
+\n\
+Then restart Snibox."
+    );
+
+    app.dialog()
+        .message(message)
+        .title("Snibox Shortcut Setup")
+        .kind(MessageDialogKind::Warning)
+        .buttons(MessageDialogButtons::Ok)
+        .show(|_| {});
+}
+
 fn register_global_hotkey(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    let mut shortcuts_to_try = vec![
-        "CmdOrCtrl+Shift+Space".to_string(),
-        "CmdOrCtrl+Space".to_string(),
-        "Super+Shift+S".to_string(),
-    ];
+    let mut shortcuts_to_try = vec!["CmdOrCtrl+Shift+Space".to_string(), "CmdOrCtrl+Space".to_string()];
+
+    #[cfg(target_os = "linux")]
+    {
+        if is_wayland_session() {
+            // Wayland sessions often reserve Space combinations for input-source switching.
+            shortcuts_to_try = vec![
+                "Ctrl+Alt+S".to_string(),
+                "Super+Shift+S".to_string(),
+                "Ctrl+Alt+Space".to_string(),
+                "CmdOrCtrl+Space".to_string(),
+                "CmdOrCtrl+Shift+Space".to_string(),
+            ];
+        } else {
+            shortcuts_to_try.extend([
+                "Ctrl+Alt+Space".to_string(),
+                "Ctrl+Alt+S".to_string(),
+                "Super+Shift+S".to_string(),
+            ]);
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        shortcuts_to_try.push("Super+Shift+S".to_string());
+    }
 
     if let Some(custom) = get_global_hotkey_setting(app) {
         if !custom.is_empty() {
@@ -100,9 +223,20 @@ fn register_global_hotkey(app: &tauri::App) -> Result<(), Box<dyn std::error::Er
         }
     }
 
-    for shortcut_str in &shortcuts_to_try {
+    let mut registered_any = false;
+    let mut first_registered: Option<String> = None;
+    let mut seen = HashSet::new();
+
+    for shortcut_str in shortcuts_to_try {
+        if !seen.insert(shortcut_str.clone()) {
+            continue;
+        }
+
         match shortcut_str.parse::<Shortcut>() {
             Ok(shortcut) => {
+                if app.global_shortcut().is_registered(shortcut) {
+                    continue;
+                }
                 match app.global_shortcut().on_shortcut(shortcut, move |app, _shortcut, event| {
                     if event.state == ShortcutState::Pressed {
                         toggle_main_window(app);
@@ -110,7 +244,10 @@ fn register_global_hotkey(app: &tauri::App) -> Result<(), Box<dyn std::error::Er
                 }) {
                     Ok(()) => {
                         eprintln!("[snibox] Global hotkey registered: {}", shortcut_str);
-                        return Ok(());
+                        if first_registered.is_none() {
+                            first_registered = Some(shortcut_str.clone());
+                        }
+                        registered_any = true;
                     }
                     Err(e) => {
                         eprintln!("[snibox] Failed to register {}: {}", shortcut_str, e);
@@ -123,7 +260,25 @@ fn register_global_hotkey(app: &tauri::App) -> Result<(), Box<dyn std::error::Er
         }
     }
 
-    eprintln!("[snibox] WARNING: No global hotkey could be registered. Use the tray icon to toggle the window.");
+    if !registered_any {
+        eprintln!(
+            "[snibox] WARNING: No global hotkey could be registered. Your desktop environment may reserve these shortcuts. Use the tray icon to toggle the window."
+        );
+    } else if let Some(ref registered) = first_registered {
+        if get_global_hotkey_setting(app).as_deref() != Some(registered.as_str()) {
+            set_global_hotkey_setting(app, registered);
+            eprintln!("[snibox] Active global hotkey set to: {}", registered);
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let show_help_always = is_waydroid_session() || is_wayland_session();
+        if show_help_always {
+            show_wayland_hotkey_help(app, first_registered.as_deref(), true);
+        }
+    }
+
     Ok(())
 }
 
@@ -165,9 +320,12 @@ pub fn run() {
             commands::snippets::update_snippet,
             commands::snippets::delete_snippet,
             commands::snippets::restore_snippet,
+            commands::snippets::duplicate_snippet,
             commands::snippets::toggle_pin,
             commands::snippets::record_used,
             commands::clipboard::copy_to_clipboard,
+            commands::clipboard::copy_and_paste,
+            commands::clipboard::copy_text,
             commands::settings::get_settings,
             commands::settings::set_setting,
             commands::drafts::save_draft,
@@ -177,15 +335,24 @@ pub fn run() {
             commands::vault::set_vault_folder,
             commands::vault::clear_vault_folder,
             commands::vault::export_to_vault,
+            commands::vault::export_backup,
+            commands::vault::import_backup,
             commands::vault::sync_vault,
             commands::drive::drive_start_auth,
             commands::drive::drive_complete_auth,
             commands::drive::drive_disconnect,
             commands::drive::drive_get_status,
             commands::drive::drive_sync,
+            commands::sync::get_sync_status,
+            commands::sync::retry_sync,
+            commands::sync::list_sync_conflicts,
+            commands::sync::get_sync_conflict,
+            commands::sync::resolve_sync_conflict,
+            commands::sync::list_sync_activity,
         ])
         .setup(|app| {
             setup_tray(app)?;
+            start_local_toggle_listener(app.handle());
             register_global_hotkey(app)?;
             
             let app_handle = app.handle().clone();

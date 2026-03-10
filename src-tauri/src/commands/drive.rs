@@ -1,7 +1,7 @@
 use crate::drive;
 use crate::drive::api::StorageMode;
 use crate::drive::auth;
-use crate::drive::sync;
+use crate::sync_state;
 use crate::drive::DriveManager;
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
@@ -18,6 +18,9 @@ pub struct DriveStatus {
     pub sync_status: String,
     pub last_synced: Option<String>,
     pub conflict_count: usize,
+    pub queue_depth: usize,
+    pub last_error: Option<String>,
+    pub needs_reauth: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -85,11 +88,12 @@ pub async fn drive_complete_auth(
             StorageMode::Appdata => "appdata",
             StorageMode::Folder => "folder",
         };
-        sync::set_drive_state(&conn, "storage_mode", mode_str)?;
+        sync_state::set_drive_state(&conn, "storage_mode", mode_str)?;
         if let Some(fid) = &params.folder_id {
-            sync::set_drive_state(&conn, "folder_id", fid)?;
+            sync_state::set_drive_state(&conn, "folder_id", fid)?;
         }
-        sync::set_drive_state(&conn, "connected", "true")?;
+        sync_state::set_drive_state(&conn, "connected", "true")?;
+        sync_state::set_global_sync_status(&conn, sync_state::SYNC_STATUS_SYNCING, None, false)?;
     }
 
     let mgr = DriveManager::start(
@@ -112,6 +116,8 @@ pub async fn drive_disconnect(state: State<'_, AppState>) -> Result<(), String> 
 
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     drive::disconnect(&conn)?;
+    sync_state::set_drive_state(&conn, "connected", "false")?;
+    sync_state::set_global_sync_status(&conn, sync_state::SYNC_STATUS_IDLE, None, false)?;
 
     Ok(())
 }
@@ -124,30 +130,21 @@ pub async fn drive_get_status(state: State<'_, AppState>) -> Result<DriveStatus,
 
     let conn = state.db.lock().map_err(|e| e.to_string())?;
 
-    let storage_mode = sync::get_drive_state(&conn, "storage_mode")?;
-    let last_synced = sync::get_drive_state(&conn, "last_sync_time")?;
-    let is_connected_state = sync::get_drive_state(&conn, "connected")?
+    let storage_mode = sync_state::get_drive_state(&conn, "storage_mode")?;
+    let payload = sync_state::get_sync_status(&conn, worker_connected)?;
+    let is_connected_state = sync_state::get_drive_state(&conn, "connected")?
         .map(|v| v == "true")
         .unwrap_or(false);
-
-    let conflict_count = if worker_connected || is_connected_state {
-        sync::get_conflict_count(&conn)?
-    } else {
-        0
-    };
 
     Ok(DriveStatus {
         connected: worker_connected || is_connected_state,
         storage_mode,
-        sync_status: if worker_connected {
-            "idle".to_string()
-        } else if is_connected_state {
-            "offline".to_string()
-        } else {
-            "disconnected".to_string()
-        },
-        last_synced,
-        conflict_count,
+        sync_status: payload.sync_status,
+        last_synced: payload.last_synced,
+        conflict_count: payload.conflict_count,
+        queue_depth: payload.queue_depth,
+        last_error: payload.last_error,
+        needs_reauth: payload.needs_reauth,
     })
 }
 

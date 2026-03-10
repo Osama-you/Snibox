@@ -33,6 +33,12 @@ pub fn create_conflict_copy(
             updated_at: now.clone(),
             last_used_at: None,
             use_count: 0,
+            sync_state: "conflicted".to_string(),
+            last_synced_at: None,
+            remote_version: None,
+            deleted_at: None,
+            conflict_parent_id: Some(local.snippet.id.clone()),
+            device_updated_at: now.clone(),
         },
         tags: local.tags.clone(),
     };

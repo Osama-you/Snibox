@@ -1,5 +1,6 @@
 use crate::db::models::SnippetWithTags;
 use crate::state::AppState;
+use crate::sync_state;
 use crate::vault::{VaultManager, SyncStats};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
@@ -107,22 +108,16 @@ pub fn export_to_vault(state: State<AppState>) -> Result<usize, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
 
     let mut stmt = conn
-        .prepare("SELECT id, title, content, pinned, created_at, updated_at, last_used_at, use_count FROM snippets")
+        .prepare(
+            "SELECT id, title, content, pinned, created_at, updated_at, last_used_at, use_count,
+                    sync_state, last_synced_at, remote_version, deleted_at, conflict_parent_id, device_updated_at
+             FROM snippets
+             WHERE deleted_at IS NULL",
+        )
         .map_err(|e| e.to_string())?;
 
     let snippets: Vec<crate::db::models::Snippet> = stmt
-        .query_map([], |row| {
-            Ok(crate::db::models::Snippet {
-                id: row.get(0)?,
-                title: row.get(1)?,
-                content: row.get(2)?,
-                pinned: row.get::<_, i64>(3)? != 0,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
-                last_used_at: row.get(6)?,
-                use_count: row.get(7)?,
-            })
-        })
+        .query_map([], sync_state::row_to_snippet)
         .map_err(|e| e.to_string())?
         .filter_map(|r| r.ok())
         .collect();
@@ -139,6 +134,11 @@ pub fn export_to_vault(state: State<AppState>) -> Result<usize, String> {
 }
 
 #[tauri::command]
+pub fn export_backup(state: State<AppState>) -> Result<usize, String> {
+    export_to_vault(state)
+}
+
+#[tauri::command]
 pub fn sync_vault(state: State<AppState>) -> Result<(), String> {
     let vault = state.vault.lock().map_err(|e| e.to_string())?;
     let vault_manager = vault
@@ -149,6 +149,11 @@ pub fn sync_vault(state: State<AppState>) -> Result<(), String> {
     crate::vault::process_vault_change(&conn, vault_manager)?;
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn import_backup(state: State<AppState>) -> Result<(), String> {
+    sync_vault(state)
 }
 
 fn get_tags_for_snippet(conn: &Connection, snippet_id: &str) -> Result<Vec<String>, String> {

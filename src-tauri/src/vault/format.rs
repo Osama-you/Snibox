@@ -27,6 +27,7 @@ impl VaultSnippet {
         }
     }
 
+    #[allow(dead_code)]
     pub fn to_snippet_with_tags(&self) -> SnippetWithTags {
         SnippetWithTags {
             snippet: Snippet {
@@ -38,6 +39,12 @@ impl VaultSnippet {
                 updated_at: self.updated_at.clone(),
                 last_used_at: None,
                 use_count: 0,
+                sync_state: "idle".to_string(),
+                last_synced_at: None,
+                remote_version: None,
+                deleted_at: None,
+                conflict_parent_id: None,
+                device_updated_at: self.updated_at.clone(),
             },
             tags: self.tags.clone(),
         }

@@ -76,6 +76,12 @@ pub fn detect_and_resolve_conflict(
                 updated_at: existing_snippet.snippet.updated_at.clone(),
                 last_used_at: existing_snippet.snippet.last_used_at.clone(),
                 use_count: existing_snippet.snippet.use_count,
+                sync_state: "conflicted".to_string(),
+                last_synced_at: existing_snippet.snippet.last_synced_at.clone(),
+                remote_version: existing_snippet.snippet.remote_version.clone(),
+                deleted_at: None,
+                conflict_parent_id: Some(existing_snippet.snippet.id.clone()),
+                device_updated_at: existing_snippet.snippet.device_updated_at.clone(),
             },
             tags: existing_snippet.tags.clone(),
         };

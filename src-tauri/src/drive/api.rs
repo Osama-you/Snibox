@@ -19,7 +19,6 @@ pub struct DriveFile {
     pub modified_time: Option<String>,
     pub md5_checksum: Option<String>,
     pub version: Option<String>,
-    pub mime_type: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -217,25 +216,6 @@ impl DriveApiClient {
         resp.text()
             .await
             .map_err(|e| format!("Failed to read file content: {}", e))
-    }
-
-    pub async fn get_file_metadata(
-        &self,
-        token: &str,
-        file_id: &str,
-    ) -> Result<DriveFile, String> {
-        let resp = self
-            .http
-            .get(format!(
-                "{}/{}?fields=id,name,modifiedTime,md5Checksum,version",
-                DRIVE_FILES_URL, file_id
-            ))
-            .bearer_auth(token)
-            .send()
-            .await
-            .map_err(|e| format!("Get metadata request failed: {}", e))?;
-
-        parse_response(resp).await
     }
 
     pub async fn delete_file(&self, token: &str, file_id: &str) -> Result<(), String> {

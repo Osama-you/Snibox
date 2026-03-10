@@ -1,6 +1,5 @@
 pub mod api;
 pub mod auth;
-pub mod conflict;
 pub mod sync;
 pub mod worker;
 
@@ -13,11 +12,8 @@ use worker::{SyncJob, SyncWorker};
 const SYNC_INTERVAL_SECS: u64 = 300;
 
 pub struct DriveManager {
-    pub auth: Arc<Mutex<DriveAuth>>,
-    pub api: Arc<DriveApiClient>,
-    pub storage_mode: StorageMode,
-    pub folder_id: Option<String>,
     pub tx: mpsc::Sender<SyncJob>,
+    _worker_handle: tokio::task::JoinHandle<()>,
     _periodic_handle: tokio::task::JoinHandle<()>,
 }
 
@@ -44,34 +40,19 @@ impl DriveManager {
             folder_id.clone(),
             app_handle,
         );
-        tokio::spawn(worker.run());
+        let worker_handle = tokio::spawn(worker.run());
 
         let periodic_handle = worker::spawn_periodic_sync(tx.clone(), SYNC_INTERVAL_SECS);
 
         Ok(Self {
-            auth,
-            api,
-            storage_mode,
-            folder_id,
             tx,
+            _worker_handle: worker_handle,
             _periodic_handle: periodic_handle,
         })
     }
 
-    pub fn enqueue_push(&self, snippet_id: &str) {
-        let _ = self.tx.try_send(SyncJob::PushSnippet {
-            snippet_id: snippet_id.to_string(),
-        });
-    }
-
-    pub fn enqueue_delete(&self, snippet_id: &str) {
-        let _ = self.tx.try_send(SyncJob::DeleteRemote {
-            snippet_id: snippet_id.to_string(),
-        });
-    }
-
     pub fn enqueue_sync(&self) {
-        let _ = self.tx.try_send(SyncJob::IncrementalSync);
+        let _ = self.tx.try_send(SyncJob::RunSync);
     }
 
     pub fn enqueue_initial_sync(&self) {

@@ -144,10 +144,6 @@ impl DriveAuth {
             .ok_or_else(|| "No access token available".to_string())
     }
 
-    pub fn has_tokens(&self) -> bool {
-        self.load_refresh_token().is_ok()
-    }
-
     fn store_refresh_token(&self, token: &str) -> Result<(), String> {
         let entry = Entry::new(KEYRING_SERVICE, KEYRING_USER)
             .map_err(|e| format!("Keyring entry error: {}", e))?;

@@ -3,6 +3,7 @@ pub mod format;
 pub mod watcher;
 
 use crate::db::models::SnippetWithTags;
+use crate::sync_state;
 use format::VaultSnippet;
 use rusqlite::Connection;
 use std::fs;
@@ -43,17 +44,7 @@ impl VaultManager {
         Ok(())
     }
 
-    pub fn delete_snippet(&self, id: &str) -> Result<(), String> {
-        let file_path = self.snippet_file_path(id);
-
-        if file_path.exists() {
-            fs::remove_file(&file_path)
-                .map_err(|e| format!("Failed to delete snippet file: {}", e))?;
-        }
-
-        Ok(())
-    }
-
+    #[allow(dead_code)]
     pub fn read_snippet(&self, id: &str) -> Result<Option<VaultSnippet>, String> {
         let file_path = self.snippet_file_path(id);
 
@@ -124,7 +115,7 @@ impl VaultManager {
         }
 
         for db_snippet in db_snippets {
-            if !vault_snippet_exists(&self, &db_snippet.snippet.id) {
+            if !vault_snippet_exists(self, &db_snippet.snippet.id) {
                 self.write_snippet(&db_snippet)?;
                 stats.exported += 1;
             }
@@ -175,22 +166,16 @@ fn should_update_from_vault(
 
 fn get_all_snippets_from_db(conn: &Connection) -> Result<Vec<SnippetWithTags>, String> {
     let mut stmt = conn
-        .prepare("SELECT id, title, content, pinned, created_at, updated_at, last_used_at, use_count FROM snippets")
+        .prepare(
+            "SELECT id, title, content, pinned, created_at, updated_at, last_used_at, use_count,
+                    sync_state, last_synced_at, remote_version, deleted_at, conflict_parent_id, device_updated_at
+             FROM snippets
+             WHERE deleted_at IS NULL",
+        )
         .map_err(|e| e.to_string())?;
 
     let snippets: Vec<crate::db::models::Snippet> = stmt
-        .query_map([], |row| {
-            Ok(crate::db::models::Snippet {
-                id: row.get(0)?,
-                title: row.get(1)?,
-                content: row.get(2)?,
-                pinned: row.get::<_, i64>(3)? != 0,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
-                last_used_at: row.get(6)?,
-                use_count: row.get(7)?,
-            })
-        })
+        .query_map([], sync_state::row_to_snippet)
         .map_err(|e| e.to_string())?
         .filter_map(|r| r.ok())
         .collect();
@@ -267,8 +252,9 @@ fn set_tags_for_snippet(
 
 fn insert_snippet_into_db(conn: &Connection, vault_snippet: &VaultSnippet) -> Result<(), String> {
     conn.execute(
-        "INSERT INTO snippets (id, title, content, pinned, created_at, updated_at) 
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        "INSERT INTO snippets (
+            id, title, content, pinned, created_at, updated_at, sync_state, device_updated_at, deleted_at
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'idle', ?6, NULL)",
         rusqlite::params![
             vault_snippet.id,
             vault_snippet.title,
@@ -286,7 +272,13 @@ fn insert_snippet_into_db(conn: &Connection, vault_snippet: &VaultSnippet) -> Re
 
 fn update_snippet_in_db(conn: &Connection, vault_snippet: &VaultSnippet) -> Result<(), String> {
     conn.execute(
-        "UPDATE snippets SET title = ?1, content = ?2, pinned = ?3, updated_at = ?4 
+        "UPDATE snippets
+         SET title = ?1,
+             content = ?2,
+             pinned = ?3,
+             updated_at = ?4,
+             device_updated_at = ?4,
+             deleted_at = NULL
          WHERE id = ?5",
         rusqlite::params![
             vault_snippet.title,

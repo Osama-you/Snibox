@@ -1,6 +1,7 @@
 use crate::drive::api::{DriveApiClient, StorageMode};
 use crate::drive::auth::DriveAuth;
 use crate::drive::sync;
+use crate::sync_state;
 use rusqlite::Connection;
 use std::sync::{Arc, Mutex as StdMutex};
 use std::time::Duration;
@@ -8,9 +9,7 @@ use tokio::sync::{mpsc, Mutex};
 
 #[derive(Debug, Clone)]
 pub enum SyncJob {
-    PushSnippet { snippet_id: String },
-    DeleteRemote { snippet_id: String },
-    IncrementalSync,
+    RunSync,
     InitialSync,
 }
 
@@ -48,50 +47,70 @@ impl SyncWorker {
     pub async fn run(mut self) {
         use tauri::Emitter;
 
-        let mut backoff = Duration::from_secs(1);
-        let max_backoff = Duration::from_secs(300);
+        let mut backoff = Duration::from_secs(2);
+        let max_backoff = Duration::from_secs(120);
 
-        loop {
-            let job = match self.rx.recv().await {
-                Some(job) => job,
-                None => {
-                    eprintln!("[drive-worker] Channel closed, shutting down");
-                    return;
-                }
-            };
+        while let Some(job) = self.rx.recv().await {
+            let _ = self.app_handle.emit("drive-sync-status", sync_state::SYNC_STATUS_SYNCING);
+            if let Ok(conn) = self.conn.lock() {
+                let _ = sync_state::set_global_sync_status(
+                    &conn,
+                    sync_state::SYNC_STATUS_SYNCING,
+                    None,
+                    false,
+                );
+            }
 
-            let _ = self.app_handle.emit("drive-sync-status", "syncing");
-
-            let result = self.process_job(&job).await;
-
-            match result {
+            match self.process_job(&job).await {
                 Ok(()) => {
-                    backoff = Duration::from_secs(1);
-                    let _ = self.app_handle.emit("drive-sync-status", "idle");
+                    backoff = Duration::from_secs(2);
+                    if let Ok(conn) = self.conn.lock() {
+                        let _ = sync_state::set_global_sync_status(
+                            &conn,
+                            sync_state::SYNC_STATUS_IDLE,
+                            None,
+                            false,
+                        );
+                    }
+                    let _ = self.app_handle.emit("drive-sync-status", sync_state::SYNC_STATUS_IDLE);
                 }
-                Err(e) => {
-                    if e.contains("revoked") || e.contains("invalid_grant") {
-                        eprintln!("[drive-worker] Auth error: {}", e);
-                        let _ = self.app_handle.emit("drive-sync-status", "auth_needed");
+                Err(error) => {
+                    let auth_error = error.contains("revoked") || error.contains("invalid_grant");
+                    if let Ok(conn) = self.conn.lock() {
+                        let _ = sync_state::set_global_sync_status(
+                            &conn,
+                            if auth_error {
+                                sync_state::SYNC_STATUS_AUTH_NEEDED
+                            } else {
+                                sync_state::SYNC_STATUS_ERROR
+                            },
+                            Some(&error),
+                            auth_error,
+                        );
+                        let _ = sync_state::log_activity(
+                            &conn,
+                            "error",
+                            "worker",
+                            &format!("Sync job failed: {error}"),
+                            None,
+                        );
+                    }
+
+                    let _ = self.app_handle.emit(
+                        "drive-sync-status",
+                        if auth_error {
+                            sync_state::SYNC_STATUS_AUTH_NEEDED
+                        } else {
+                            sync_state::SYNC_STATUS_ERROR
+                        },
+                    );
+                    if auth_error {
                         let _ = self.app_handle.emit("drive-auth-needed", ());
                         continue;
                     }
 
-                    eprintln!(
-                        "[drive-worker] Error processing {:?}, retrying in {:?}: {}",
-                        job, backoff, e
-                    );
-                    let _ = self.app_handle.emit("drive-sync-status", "error");
-
                     tokio::time::sleep(backoff).await;
                     backoff = (backoff * 2).min(max_backoff);
-
-                    if let Err(e) = self.process_job(&job).await {
-                        eprintln!("[drive-worker] Retry also failed: {}", e);
-                    } else {
-                        backoff = Duration::from_secs(1);
-                        let _ = self.app_handle.emit("drive-sync-status", "idle");
-                    }
                 }
             }
         }
@@ -102,47 +121,24 @@ impl SyncWorker {
         let folder_id = self.folder_id.as_deref();
 
         match job {
-            SyncJob::PushSnippet { snippet_id } => {
-                sync::push_single_snippet(
-                    &mut auth,
-                    &self.api,
-                    &self.conn,
-                    snippet_id,
-                    self.storage_mode,
-                    folder_id,
-                )
-                .await
-            }
-            SyncJob::DeleteRemote { snippet_id } => {
-                sync::delete_remote_snippet(&mut auth, &self.api, &self.conn, snippet_id).await
-            }
-            SyncJob::IncrementalSync => {
-                sync::incremental_sync(
-                    &mut auth,
-                    &self.api,
-                    &self.conn,
-                    self.storage_mode,
-                    folder_id,
-                )
-                .await
-                .map(|_| ())
-            }
-            SyncJob::InitialSync => {
-                sync::initial_sync(
-                    &mut auth,
-                    &self.api,
-                    &self.conn,
-                    self.storage_mode,
-                    folder_id,
-                )
-                .await
-                .map(|stats| {
-                    eprintln!(
-                        "[drive] Initial sync: imported={} exported={} updated={} conflicts={}",
-                        stats.imported, stats.exported, stats.updated, stats.conflicts
-                    );
-                })
-            }
+            SyncJob::InitialSync => sync::initial_sync(
+                &mut auth,
+                &self.api,
+                &self.conn,
+                self.storage_mode,
+                folder_id,
+            )
+            .await
+            .map(|_| ()),
+            SyncJob::RunSync => sync::incremental_sync(
+                &mut auth,
+                &self.api,
+                &self.conn,
+                self.storage_mode,
+                folder_id,
+            )
+            .await
+            .map(|_| ()),
         }
     }
 }
@@ -157,7 +153,7 @@ pub fn spawn_periodic_sync(
 
         loop {
             interval.tick().await;
-            if tx.try_send(SyncJob::IncrementalSync).is_err() {
+            if tx.try_send(SyncJob::RunSync).is_err() {
                 break;
             }
         }

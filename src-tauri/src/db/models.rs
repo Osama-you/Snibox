@@ -10,12 +10,12 @@ pub struct Snippet {
     pub updated_at: String,
     pub last_used_at: Option<String>,
     pub use_count: i64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Tag {
-    pub id: String,
-    pub name: String,
+    pub sync_state: String,
+    pub last_synced_at: Option<String>,
+    pub remote_version: Option<String>,
+    pub deleted_at: Option<String>,
+    pub conflict_parent_id: Option<String>,
+    pub device_updated_at: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -33,10 +33,4 @@ pub struct Draft {
     pub content: Option<String>,
     pub tags: Option<String>,
     pub saved_at: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Setting {
-    pub key: String,
-    pub value: String,
 }
