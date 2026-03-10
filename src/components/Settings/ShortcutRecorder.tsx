@@ -111,13 +111,13 @@ export function ShortcutRecorder({
                      transition-all duration-75 text-center ${
                        recording
                          ? "border-accent bg-accent/10 text-accent animate-pulse"
-                         : "border-border bg-bg-primary text-text-primary hover:bg-bg-hover"
+                         : "border-border bg-bg text-text-primary hover:bg-border/40"
                      }`}
       >
         {recording ? "Press keys..." : formatDef(value)}
       </button>
       {conflict && (
-        <span className="text-[11px] text-red-500">
+        <span className="text-[11px] text-danger">
           Conflicts with "{conflict}"
         </span>
       )}

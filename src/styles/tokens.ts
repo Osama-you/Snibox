@@ -8,9 +8,9 @@ export const SPACING = {
 } as const;
 
 export const WINDOW = {
-  launcherWidth: 600,
-  launcherHeight: 500,
-  editorHeight: 560,
+  launcherWidth: 500,
+  launcherHeight: 530,
+  editorHeight: 590,
   minWidth: 400,
   minHeight: 300,
 } as const;

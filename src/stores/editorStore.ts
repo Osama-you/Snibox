@@ -1,18 +1,37 @@
 import { create } from "zustand";
 
+interface EditorSnapshot {
+  title: string;
+  content: string;
+  tags: string[];
+}
+
 interface EditorStore {
   title: string;
   content: string;
   tags: string[];
   isDirty: boolean;
-  originalSnapshot: { title: string; content: string; tags: string[] } | null;
+  originalSnapshot: EditorSnapshot | null;
 
   setTitle: (title: string) => void;
   setContent: (content: string) => void;
   setTags: (tags: string[]) => void;
   initEditor: (title: string, content: string, tags: string[]) => void;
   reset: () => void;
-  computeDirty: () => boolean;
+}
+
+function computeDirty(
+  title: string,
+  content: string,
+  tags: string[],
+  snap: EditorSnapshot | null,
+): boolean {
+  if (!snap) return title !== "" || content !== "" || tags.length > 0;
+  return (
+    title !== snap.title ||
+    content !== snap.content ||
+    JSON.stringify(tags) !== JSON.stringify(snap.tags)
+  );
 }
 
 export const useEditorStore = create<EditorStore>((set, get) => ({
@@ -22,22 +41,22 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   isDirty: false,
   originalSnapshot: null,
 
-  setTitle: (title: string) => {
-    set({ title });
-    set({ isDirty: get().computeDirty() });
+  setTitle: (title) => {
+    const { content, tags, originalSnapshot } = get();
+    set({ title, isDirty: computeDirty(title, content, tags, originalSnapshot) });
   },
 
-  setContent: (content: string) => {
-    set({ content });
-    set({ isDirty: get().computeDirty() });
+  setContent: (content) => {
+    const { title, tags, originalSnapshot } = get();
+    set({ content, isDirty: computeDirty(title, content, tags, originalSnapshot) });
   },
 
-  setTags: (tags: string[]) => {
-    set({ tags });
-    set({ isDirty: get().computeDirty() });
+  setTags: (tags) => {
+    const { title, content, originalSnapshot } = get();
+    set({ tags, isDirty: computeDirty(title, content, tags, originalSnapshot) });
   },
 
-  initEditor: (title: string, content: string, tags: string[]) => {
+  initEditor: (title, content, tags) => {
     set({
       title,
       content,
@@ -55,15 +74,5 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       isDirty: false,
       originalSnapshot: null,
     });
-  },
-
-  computeDirty: () => {
-    const { title, content, tags, originalSnapshot } = get();
-    if (!originalSnapshot) return title !== "" || content !== "" || tags.length > 0;
-    return (
-      title !== originalSnapshot.title ||
-      content !== originalSnapshot.content ||
-      JSON.stringify(tags) !== JSON.stringify(originalSnapshot.tags)
-    );
   },
 }));

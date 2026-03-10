@@ -3,6 +3,7 @@ import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 
 type UpdateStatus = "idle" | "checking" | "available" | "downloading" | "ready" | "error";
+type UpdateCheckResult = "available" | "none" | "error";
 
 interface UpdaterStore {
   status: UpdateStatus;
@@ -12,7 +13,7 @@ interface UpdaterStore {
   error: string | null;
   update: Update | null;
 
-  checkForUpdate: () => Promise<void>;
+  checkForUpdate: () => Promise<UpdateCheckResult>;
   downloadAndInstall: () => Promise<void>;
   restartApp: () => Promise<void>;
   dismiss: () => void;
@@ -37,11 +38,14 @@ export const useUpdaterStore = create<UpdaterStore>((set, get) => ({
           notes: update.body ?? null,
           update,
         });
+        return "available";
       } else {
-        set({ status: "idle" });
+        set({ status: "idle", update: null, version: null, notes: null, progress: 0, error: null });
+        return "none";
       }
     } catch (e) {
-      set({ status: "error", error: String(e) });
+      set({ status: "error", error: String(e), update: null });
+      return "error";
     }
   },
 

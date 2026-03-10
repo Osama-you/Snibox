@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { platform } from "./platform";
 
 export interface KeybindDef {
@@ -38,15 +38,18 @@ export function useKeybind(
   handlers: Record<string, () => void>,
   enabled = true,
 ) {
+  const handlersRef = useRef(handlers);
+  handlersRef.current = handlers;
+
   useEffect(() => {
     if (!enabled) return;
 
     const handler = (e: KeyboardEvent) => {
       for (const [id, def] of Object.entries(binds)) {
-        if (handlers[id] && matchesKeybind(e, def)) {
+        if (handlersRef.current[id] && matchesKeybind(e, def)) {
           e.preventDefault();
           e.stopPropagation();
-          handlers[id]();
+          handlersRef.current[id]();
           return;
         }
       }
@@ -54,5 +57,5 @@ export function useKeybind(
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [binds, handlers, enabled]);
+  }, [binds, enabled]);
 }

@@ -15,14 +15,14 @@
       {
         "label": "main",
         "title": "Snibox",
-        "width": 600,
-        "height": 500,
+        "width": 500,
+        "height": 530,
         "minWidth": 400,
         "minHeight": 300,
         "visible": false,
         "decorations": false,
         "transparent": true,
-        "alwaysOnTop": true,
+        "alwaysOnTop": false,
         "skipTaskbar": true,
         "center": true,
         "resizable": false

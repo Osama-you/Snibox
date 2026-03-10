@@ -15,26 +15,24 @@ export function EditorActions({ onSave, onCancel }: EditorActionsProps) {
   );
 
   return (
-    <div className="flex items-center justify-between pt-md">
+    <div className="flex items-center justify-between pt-sm">
       <button
         onClick={onCancel}
-        className="h-[36px] px-base text-snippet-title text-text-secondary
+        className="h-[32px] px-base text-snippet-body text-text-secondary
                    bg-surface border border-border rounded-btn
-                   hover:bg-border transition-colors duration-75
-                   focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+                   hover:bg-border/60 transition-colors"
       >
         Cancel
       </button>
       <div className="flex items-center gap-sm">
-        <span className="text-snippet-meta text-text-subtle">
+        <span className="text-[10px] text-text-subtle font-mono">
           {saveLabel}
         </span>
         <button
           onClick={onSave}
-          className="h-[36px] px-base text-snippet-title text-white
+          className="h-[32px] px-base text-snippet-body font-medium text-white
                      bg-accent hover:bg-accent-hover rounded-btn
-                     transition-colors duration-75
-                     focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                     transition-colors"
         >
           Save
         </button>

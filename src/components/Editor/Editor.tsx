@@ -82,7 +82,7 @@ export function Editor() {
   });
 
   return (
-    <div className="flex flex-col h-full p-base gap-md">
+    <div className="flex flex-col flex-1 min-h-0 px-base pb-base pt-sm gap-md">
       <TitleInput />
       <ContentArea />
       <TagsInput />

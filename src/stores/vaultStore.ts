@@ -63,7 +63,6 @@ export const useVaultStore = create<VaultStore>((set, get) => ({
   syncVault: async () => {
     set({ syncStatus: "syncing" });
     await commands.syncVault();
-    const { conflictCount } = get();
-    set({ syncStatus: syncStatusFromStats(conflictCount) });
+    await get().loadVaultStatus();
   },
 }));
