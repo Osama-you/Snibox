@@ -17,12 +17,12 @@ export function EmptyState({ hasSnippets, searchQuery }: EmptyStateProps) {
   if (!hasSnippets && !searchQuery) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center px-base py-lg">
-        <p className="text-snippet-title text-text-secondary mb-sm">
+        <p className="text-snippet-title text-text-secondary mb-xs">
           No snippets yet.
         </p>
         <p className="text-snippet-body text-text-subtle">
           Press{" "}
-          <kbd className="px-xs py-[1px] bg-surface border border-border rounded text-snippet-meta font-mono">
+          <kbd className="px-[5px] py-[1px] bg-surface border border-border rounded text-[10px] font-mono text-text-secondary">
             {shortcutLabel}
           </kbd>{" "}
           to create one.
@@ -33,12 +33,13 @@ export function EmptyState({ hasSnippets, searchQuery }: EmptyStateProps) {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center text-center px-base py-lg">
-      <p className="text-snippet-title text-text-secondary mb-sm">
+      <p className="text-snippet-title text-text-secondary mb-xs">
         No matches for &ldquo;{searchQuery}&rdquo;
       </p>
       <p className="text-snippet-body text-text-subtle">
         Try <code className="text-accent">#tag</code> or{" "}
-        <code className="text-accent">tag:name</code>
+        <code className="text-accent">tag:name</code> or{" "}
+        <code className="text-accent">is:pinned</code>
       </p>
     </div>
   );

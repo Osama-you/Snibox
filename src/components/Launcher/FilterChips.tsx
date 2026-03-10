@@ -1,25 +1,28 @@
+import { memo } from "react";
+
 interface FilterChipsProps {
-  activeTag: string | null;
-  onClear: () => void;
+  filters: string[];
+  onClear: (filter: string) => void;
 }
 
-export function FilterChips({ activeTag, onClear }: FilterChipsProps) {
-  if (!activeTag) return null;
+export const FilterChips = memo(function FilterChips({ filters, onClear }: FilterChipsProps) {
+  if (filters.length === 0) return null;
 
   return (
-    <div className="px-md pb-xs flex items-center gap-xs">
-      <span className="inline-flex items-center gap-[2px] h-[24px] px-sm
-                        text-snippet-meta text-accent bg-accent/10 border border-accent/20 rounded-chip">
-        #{activeTag}
-      </span>
-      <button
-        onClick={onClear}
-        className="h-[24px] px-sm text-snippet-meta text-text-subtle
-                   hover:text-danger transition-colors duration-75 rounded-chip
-                   hover:bg-danger/10"
-      >
-        &times; clear
-      </button>
+    <div className="px-md pb-xs flex items-center gap-xs flex-wrap">
+      {filters.map((filter) => (
+        <button
+          key={filter}
+          onClick={() => onClear(filter)}
+          aria-label={`Remove filter: ${filter}`}
+          className="inline-flex items-center gap-[6px] h-[24px] px-sm
+                     text-snippet-meta text-accent bg-accent/10 border border-accent/20 rounded-chip
+                     hover:bg-accent/15 transition-colors"
+        >
+          <span>{filter}</span>
+          <span aria-hidden="true">&times;</span>
+        </button>
+      ))}
     </div>
   );
-}
+});

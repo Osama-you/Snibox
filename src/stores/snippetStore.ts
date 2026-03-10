@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { SnippetWithTags } from "@/lib/commands";
 import { commands } from "@/lib/commands";
-import { parseSearchQuery } from "@/lib/search";
+import { parseSearchQuery, activeFilterLabels } from "@/lib/search";
 
 type Mode = "launcher" | "editor" | "settings";
 
@@ -10,6 +10,7 @@ interface SnippetStore {
   selectedIndex: number;
   searchQuery: string;
   activeTagFilter: string | null;
+  activeFilters: string[];
   mode: Mode;
   editingSnippetId: string | null;
 
@@ -23,22 +24,45 @@ interface SnippetStore {
   refreshSnippets: () => Promise<void>;
 }
 
+let latestSearchRequestId = 0;
+
+async function fetchSnippets(query: string): Promise<{
+  snippets: SnippetWithTags[];
+  activeTagFilter: string | null;
+  activeFilters: string[];
+}> {
+  const parsed = parseSearchQuery(query);
+  const tagFilter = parsed.tags.length > 0 ? parsed.tags[0] : undefined;
+  const textQuery = parsed.text || undefined;
+  const snippets = await commands.listSnippets(textQuery, tagFilter, parsed.filters);
+  return {
+    snippets,
+    activeTagFilter: tagFilter ?? null,
+    activeFilters: activeFilterLabels(parsed),
+  };
+}
+
 export const useSnippetStore = create<SnippetStore>((set, get) => ({
   snippets: [],
   selectedIndex: 0,
   searchQuery: "",
   activeTagFilter: null,
+  activeFilters: [],
   mode: "launcher",
   editingSnippetId: null,
 
   setQuery: (query: string) => {
+    const requestId = ++latestSearchRequestId;
     set({ searchQuery: query, selectedIndex: 0 });
-    const parsed = parseSearchQuery(query);
-    const tagFilter = parsed.tags.length > 0 ? parsed.tags[0] : undefined;
-    const textQuery = parsed.text || undefined;
-    commands.listSnippets(textQuery, tagFilter).then((snippets) => {
-      set({ snippets, activeTagFilter: tagFilter ?? null });
-    });
+    void fetchSnippets(query)
+      .then(({ snippets, activeTagFilter, activeFilters }) => {
+        if (requestId !== latestSearchRequestId) return;
+        set({ snippets, activeTagFilter, activeFilters });
+      })
+      .catch(() => {
+        if (requestId !== latestSearchRequestId) return;
+        set({ snippets: [], activeTagFilter: null, activeFilters: [] });
+      });
   },
 
   moveSelection: (delta: number) => {
@@ -70,15 +94,14 @@ export const useSnippetStore = create<SnippetStore>((set, get) => ({
       mode: "launcher",
       editingSnippetId: null,
     });
-    get().refreshSnippets();
+    void get().refreshSnippets();
   },
 
   refreshSnippets: async () => {
+    const requestId = ++latestSearchRequestId;
     const { searchQuery } = get();
-    const parsed = parseSearchQuery(searchQuery);
-    const tagFilter = parsed.tags.length > 0 ? parsed.tags[0] : undefined;
-    const textQuery = parsed.text || undefined;
-    const snippets = await commands.listSnippets(textQuery, tagFilter);
-    set({ snippets });
+    const { snippets, activeTagFilter, activeFilters } = await fetchSnippets(searchQuery);
+    if (requestId !== latestSearchRequestId) return;
+    set({ snippets, activeTagFilter, activeFilters });
   },
 }));

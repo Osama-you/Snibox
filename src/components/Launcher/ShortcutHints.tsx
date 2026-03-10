@@ -11,7 +11,7 @@ export function ShortcutHints() {
   const binds = useKeybindStore((s) => s.launcherBinds);
 
   return (
-    <div className="h-[32px] flex items-center justify-center gap-base px-md border-t border-border">
+    <div className="flex items-center gap-md whitespace-nowrap overflow-hidden">
       <Hint keys={formatDef(binds.new)} label="new" />
       <Hint keys={formatDef(binds.copy)} label="copy" />
       <Hint keys={formatDef(binds.edit)} label="edit" />
@@ -22,9 +22,9 @@ export function ShortcutHints() {
 
 function Hint({ keys, label }: { keys: string; label: string }) {
   return (
-    <span className="text-snippet-meta text-text-subtle flex items-center gap-[3px]">
-      <kbd className="font-mono text-text-secondary">{keys}</kbd>
-      <span>{label}</span>
+    <span className="text-text-secondary flex items-center gap-[3px] shrink-0">
+      <kbd className="font-mono text-snippet-meta leading-none">{keys}</kbd>
+      <span className="text-snippet-meta text-text-subtle">{label}</span>
     </span>
   );
 }
