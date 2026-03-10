@@ -11,6 +11,10 @@ export default defineConfig(async () => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  test: {
+    environment: "jsdom",
+    globals: false,
+  },
   clearScreen: false,
   server: {
     port: 1420,

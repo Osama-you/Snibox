@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [master, main]
+    branches: [main]
   pull_request:
-    branches: [master, main]
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -52,8 +52,15 @@ jobs:
         working-directory: src-tauri
         run: cargo clippy -- -D warnings
 
+      - name: Rust tests
+        working-directory: src-tauri
+        run: cargo test
+
       - name: TypeScript type check
         run: npx tsc --noEmit
+
+      - name: Frontend tests
+        run: pnpm test
 
       - name: Build frontend
         run: pnpm build

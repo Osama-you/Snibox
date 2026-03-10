@@ -65,6 +65,12 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
+      - name: Configure updater feed and signing key
+        env:
+          SNIBOX_UPDATER_REPOSITORY: ${{ github.repository }}
+          SNIBOX_UPDATER_PUBKEY: ${{ secrets.TAURI_PUBLIC_KEY }}
+        run: node scripts/configure-updater.mjs
+
       - name: Install Apple API key
         if: runner.os == 'macOS'
         run: |
@@ -84,6 +90,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           ENABLE_CODE_SIGNING: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -94,7 +102,7 @@ jobs:
           tagName: v__VERSION__
           releaseName: "Snibox v__VERSION__"
           releaseBody: "See the assets for download links and release notes."
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
           args: ${{ matrix.args }}

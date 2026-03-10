@@ -52,6 +52,12 @@ pnpm install
 pnpm tauri dev
 ```
 
+Create local env file before first run:
+
+```bash
+cp .env.example .env
+```
+
 ### Build
 
 ```bash
@@ -68,6 +74,15 @@ git push && git push --tags
 ```
 
 Pushing a `v*` tag triggers the release workflow on GitHub Actions.
+
+Versioning follows SemVer (`MAJOR.MINOR.PATCH`). Use `scripts/bump-version.sh` so all version fields stay in sync.
+
+The release workflow also injects updater settings at build time:
+
+- `SNIBOX_UPDATER_REPOSITORY` (from `github.repository`)
+- `SNIBOX_UPDATER_PUBKEY` (from GitHub secret `TAURI_PUBLIC_KEY`)
+
+This ensures installed users can receive in-app updates from GitHub Releases without reinstalling.
 
 ## Architecture
 
