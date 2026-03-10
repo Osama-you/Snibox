@@ -13,6 +13,9 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-22.04
+    env:
+      GOOGLE_CLIENT_ID: ci-google-client-id
+      GOOGLE_CLIENT_SECRET: ci-google-client-secret
     steps:
       - uses: actions/checkout@v4
 
