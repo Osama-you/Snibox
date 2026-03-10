@@ -166,9 +166,15 @@ impl DriveApiClient {
 
         let resp = self
             .http
-            .post(format!("{}?uploadType=multipart&fields=id,name,modifiedTime,md5Checksum,version", DRIVE_UPLOAD_URL))
+            .post(format!(
+                "{}?uploadType=multipart&fields=id,name,modifiedTime,md5Checksum,version",
+                DRIVE_UPLOAD_URL
+            ))
             .bearer_auth(token)
-            .header("Content-Type", format!("multipart/related; boundary={}", boundary))
+            .header(
+                "Content-Type",
+                format!("multipart/related; boundary={}", boundary),
+            )
             .body(body)
             .send()
             .await
@@ -345,11 +351,15 @@ impl DriveApiClient {
     }
 }
 
-async fn parse_response<T: serde::de::DeserializeOwned>(resp: reqwest::Response) -> Result<T, String> {
+async fn parse_response<T: serde::de::DeserializeOwned>(
+    resp: reqwest::Response,
+) -> Result<T, String> {
     if !resp.status().is_success() {
         let status = resp.status();
         let body = resp.text().await.unwrap_or_default();
         return Err(format!("Drive API error {}: {}", status, body));
     }
-    resp.json().await.map_err(|e| format!("Failed to parse Drive response: {}", e))
+    resp.json()
+        .await
+        .map_err(|e| format!("Failed to parse Drive response: {}", e))
 }

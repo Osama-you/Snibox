@@ -6,7 +6,8 @@ const KEYRING_SERVICE: &str = "com.snibox.app";
 const KEYRING_USER: &str = "google_drive_refresh";
 const TOKEN_ENDPOINT: &str = "https://oauth2.googleapis.com/token";
 const AUTH_ENDPOINT: &str = "https://accounts.google.com/o/oauth2/v2/auth";
-const SCOPES: &str = "https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file";
+const SCOPES: &str =
+    "https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file";
 
 #[derive(Deserialize)]
 struct TokenResponse {
@@ -173,7 +174,10 @@ impl DriveAuth {
 pub fn generate_pkce() -> (String, String) {
     use oauth2::PkceCodeChallenge;
     let (challenge, verifier) = PkceCodeChallenge::new_random_sha256();
-    (challenge.as_str().to_string(), verifier.secret().to_string())
+    (
+        challenge.as_str().to_string(),
+        verifier.secret().to_string(),
+    )
 }
 
 pub(crate) mod urlencoding {

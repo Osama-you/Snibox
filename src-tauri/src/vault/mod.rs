@@ -38,8 +38,7 @@ impl VaultManager {
         let json = vault_snippet.to_json()?;
         let file_path = self.snippet_file_path(&snippet.snippet.id);
 
-        fs::write(&file_path, json)
-            .map_err(|e| format!("Failed to write snippet file: {}", e))?;
+        fs::write(&file_path, json).map_err(|e| format!("Failed to write snippet file: {}", e))?;
 
         Ok(())
     }
@@ -86,17 +85,17 @@ impl VaultManager {
         Ok(snippets)
     }
 
-    pub fn sync_with_database(
-        &self,
-        conn: &Connection,
-    ) -> Result<SyncStats, String> {
+    pub fn sync_with_database(&self, conn: &Connection) -> Result<SyncStats, String> {
         let vault_snippets = self.list_all_snippets()?;
         let mut stats = SyncStats::default();
 
         let db_snippets = get_all_snippets_from_db(conn)?;
 
         for vault_snippet in vault_snippets {
-            if let Some(existing) = db_snippets.iter().find(|s| s.snippet.id == vault_snippet.id) {
+            if let Some(existing) = db_snippets
+                .iter()
+                .find(|s| s.snippet.id == vault_snippet.id)
+            {
                 if should_update_from_vault(&vault_snippet, existing)? {
                     if let Some(conflict) =
                         conflict::detect_and_resolve_conflict(conn, &vault_snippet, existing)?
@@ -124,10 +123,7 @@ impl VaultManager {
         Ok(stats)
     }
 
-    pub fn start_watcher(
-        &self,
-        app_handle: tauri::AppHandle,
-    ) -> Result<VaultWatcher, String> {
+    pub fn start_watcher(&self, app_handle: tauri::AppHandle) -> Result<VaultWatcher, String> {
         VaultWatcher::new(&self.vault_path, app_handle)
     }
 }
@@ -294,22 +290,20 @@ fn update_snippet_in_db(conn: &Connection, vault_snippet: &VaultSnippet) -> Resu
     Ok(())
 }
 
-pub fn process_vault_change(
-    conn: &Connection,
-    vault_manager: &VaultManager,
-) -> Result<(), String> {
+pub fn process_vault_change(conn: &Connection, vault_manager: &VaultManager) -> Result<(), String> {
     let vault_snippets = vault_manager.list_all_snippets()?;
     let db_snippets = get_all_snippets_from_db(conn)?;
 
     let vault_ids: std::collections::HashSet<String> =
         vault_snippets.iter().map(|s| s.id.clone()).collect();
-    let db_ids: std::collections::HashSet<String> = db_snippets
-        .iter()
-        .map(|s| s.snippet.id.clone())
-        .collect();
+    let db_ids: std::collections::HashSet<String> =
+        db_snippets.iter().map(|s| s.snippet.id.clone()).collect();
 
     for vault_snippet in &vault_snippets {
-        if let Some(existing) = db_snippets.iter().find(|s| s.snippet.id == vault_snippet.id) {
+        if let Some(existing) = db_snippets
+            .iter()
+            .find(|s| s.snippet.id == vault_snippet.id)
+        {
             if should_update_from_vault(vault_snippet, existing)? {
                 update_snippet_in_db(conn, vault_snippet)?;
             }
@@ -320,8 +314,11 @@ pub fn process_vault_change(
 
     for db_id in db_ids {
         if !vault_ids.contains(&db_id) {
-            conn.execute("DELETE FROM snippets WHERE id = ?1", rusqlite::params![db_id])
-                .map_err(|e| e.to_string())?;
+            conn.execute(
+                "DELETE FROM snippets WHERE id = ?1",
+                rusqlite::params![db_id],
+            )
+            .map_err(|e| e.to_string())?;
         }
     }
 

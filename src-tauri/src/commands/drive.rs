@@ -1,9 +1,9 @@
 use crate::drive;
 use crate::drive::api::StorageMode;
 use crate::drive::auth;
-use crate::sync_state;
 use crate::drive::DriveManager;
 use crate::state::AppState;
+use crate::sync_state;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, State};
 
@@ -32,9 +32,7 @@ pub struct OAuthStartResult {
 }
 
 #[tauri::command]
-pub async fn drive_start_auth(
-    app_handle: AppHandle,
-) -> Result<OAuthStartResult, String> {
+pub async fn drive_start_auth(app_handle: AppHandle) -> Result<OAuthStartResult, String> {
     let (code_challenge, code_verifier) = auth::generate_pkce();
 
     let port = tauri_plugin_oauth::start_with_config(

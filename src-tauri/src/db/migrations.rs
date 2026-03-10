@@ -210,7 +210,9 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
 }
 
 fn ensure_column(conn: &Connection, table: &str, column: &str, ddl: &str) -> Result<()> {
-    let mut stmt = conn.prepare(&format!("SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name = ?1"))?;
+    let mut stmt = conn.prepare(&format!(
+        "SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name = ?1"
+    ))?;
     let exists: i64 = stmt.query_row([column], |row| row.get(0))?;
     if exists == 0 {
         conn.execute_batch(ddl)?;

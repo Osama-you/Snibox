@@ -83,7 +83,9 @@ pub async fn connect(
     let folder_id = match storage_mode {
         StorageMode::Folder => {
             let token = auth.get_valid_token().await?;
-            let folder = api.find_or_create_folder(&token, "Snibox", storage_mode).await?;
+            let folder = api
+                .find_or_create_folder(&token, "Snibox", storage_mode)
+                .await?;
             Some(folder.id)
         }
         StorageMode::Appdata => None,
@@ -101,7 +103,9 @@ pub struct DriveReconnectParams {
     pub folder_id: Option<String>,
 }
 
-pub fn read_reconnect_params(conn: &rusqlite::Connection) -> Result<Option<DriveReconnectParams>, String> {
+pub fn read_reconnect_params(
+    conn: &rusqlite::Connection,
+) -> Result<Option<DriveReconnectParams>, String> {
     let connected = sync::get_drive_state(conn, "connected")?
         .map(|v| v == "true")
         .unwrap_or(false);
@@ -110,8 +114,8 @@ pub fn read_reconnect_params(conn: &rusqlite::Connection) -> Result<Option<Drive
         return Ok(None);
     }
 
-    let mode_str = sync::get_drive_state(conn, "storage_mode")?
-        .unwrap_or_else(|| "appdata".to_string());
+    let mode_str =
+        sync::get_drive_state(conn, "storage_mode")?.unwrap_or_else(|| "appdata".to_string());
     let storage_mode = if mode_str == "folder" {
         StorageMode::Folder
     } else {

@@ -219,7 +219,9 @@ pub async fn incremental_sync(
 
     loop {
         let token = auth.get_valid_token().await?;
-        let change_list = api.list_changes(&token, &current_page_token, storage_mode).await?;
+        let change_list = api
+            .list_changes(&token, &current_page_token, storage_mode)
+            .await?;
 
         for change in &change_list.changes {
             let file_id = match &change.file_id {
@@ -287,9 +289,16 @@ pub async fn incremental_sync(
                 let conn = db.lock().map_err(|e| e.to_string())?;
                 match sync_state::load_snippet_with_tags(&conn, &snippet_id, true)? {
                     Some(local_snippet) if local_snippet.snippet.deleted_at.is_some() => {
-                        sync_state::queue_operation(&conn, &snippet_id, "delete", "preserve_local_delete")?;
+                        sync_state::queue_operation(
+                            &conn,
+                            &snippet_id,
+                            "delete",
+                            "preserve_local_delete",
+                        )?;
                     }
-                    Some(local_snippet) if is_content_different(&remote_snippet, &local_snippet) => {
+                    Some(local_snippet)
+                        if is_content_different(&remote_snippet, &local_snippet) =>
+                    {
                         let local_changed = local_snippet
                             .snippet
                             .last_synced_at
@@ -330,17 +339,29 @@ pub async fn incremental_sync(
 
                         sync_state::insert_or_replace_snippet(&conn, &remote_snippet)?;
                         upsert_drive_sync(&conn, &snippet_id, file)?;
-                        sync_state::mark_snippet_synced(&conn, &snippet_id, file.version.as_deref())?;
+                        sync_state::mark_snippet_synced(
+                            &conn,
+                            &snippet_id,
+                            file.version.as_deref(),
+                        )?;
                         stats.updated += 1;
                     }
                     Some(_) => {
                         upsert_drive_sync(&conn, &snippet_id, file)?;
-                        sync_state::mark_snippet_synced(&conn, &snippet_id, file.version.as_deref())?;
+                        sync_state::mark_snippet_synced(
+                            &conn,
+                            &snippet_id,
+                            file.version.as_deref(),
+                        )?;
                     }
                     None => {
                         sync_state::insert_or_replace_snippet(&conn, &remote_snippet)?;
                         upsert_drive_sync(&conn, &snippet_id, file)?;
-                        sync_state::mark_snippet_synced(&conn, &snippet_id, file.version.as_deref())?;
+                        sync_state::mark_snippet_synced(
+                            &conn,
+                            &snippet_id,
+                            file.version.as_deref(),
+                        )?;
                         stats.imported += 1;
                     }
                 }
@@ -596,7 +617,10 @@ fn find_snippet_by_drive_file_id(
     .map_err(|e| e.to_string())
 }
 
-fn get_all_snippets_from_db(conn: &Connection, include_deleted: bool) -> Result<Vec<SnippetWithTags>, String> {
+fn get_all_snippets_from_db(
+    conn: &Connection,
+    include_deleted: bool,
+) -> Result<Vec<SnippetWithTags>, String> {
     let sql = if include_deleted {
         "SELECT id, title, content, pinned, created_at, updated_at, last_used_at, use_count,
                 sync_state, last_synced_at, remote_version, deleted_at, conflict_parent_id, device_updated_at

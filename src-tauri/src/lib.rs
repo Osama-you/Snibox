@@ -88,7 +88,10 @@ fn start_local_toggle_listener(app: &tauri::AppHandle) {
         let listener = match TcpListener::bind("127.0.0.1:17391") {
             Ok(listener) => listener,
             Err(e) => {
-                eprintln!("[snibox] Local toggle listener unavailable on 127.0.0.1:17391: {}", e);
+                eprintln!(
+                    "[snibox] Local toggle listener unavailable on 127.0.0.1:17391: {}",
+                    e
+                );
                 return;
             }
         };
@@ -159,11 +162,15 @@ fn show_wayland_hotkey_help(app: &tauri::App, registered: Option<&str>, always_s
 If pressing it does not open Snibox, your compositor/session is intercepting it.\n\n"
         ));
     } else {
-        message.push_str("Snibox could not register a global shortcut on your Wayland/Waydroid session.\n\n");
+        message.push_str(
+            "Snibox could not register a global shortcut on your Wayland/Waydroid session.\n\n",
+        );
     }
 
     if always_show {
-        message.push_str("Wayland/Waydroid sessions can block global shortcuts from desktop apps.\n\n");
+        message.push_str(
+            "Wayland/Waydroid sessions can block global shortcuts from desktop apps.\n\n",
+        );
     }
 
     message.push_str(
@@ -190,7 +197,10 @@ Then restart Snibox."
 }
 
 fn register_global_hotkey(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
-    let mut shortcuts_to_try = vec!["CmdOrCtrl+Shift+Space".to_string(), "CmdOrCtrl+Space".to_string()];
+    let mut shortcuts_to_try = vec![
+        "CmdOrCtrl+Shift+Space".to_string(),
+        "CmdOrCtrl+Space".to_string(),
+    ];
 
     #[cfg(target_os = "linux")]
     {
@@ -237,11 +247,13 @@ fn register_global_hotkey(app: &tauri::App) -> Result<(), Box<dyn std::error::Er
                 if app.global_shortcut().is_registered(shortcut) {
                     continue;
                 }
-                match app.global_shortcut().on_shortcut(shortcut, move |app, _shortcut, event| {
-                    if event.state == ShortcutState::Pressed {
-                        toggle_main_window(app);
-                    }
-                }) {
+                match app
+                    .global_shortcut()
+                    .on_shortcut(shortcut, move |app, _shortcut, event| {
+                        if event.state == ShortcutState::Pressed {
+                            toggle_main_window(app);
+                        }
+                    }) {
                     Ok(()) => {
                         eprintln!("[snibox] Global hotkey registered: {}", shortcut_str);
                         if first_registered.is_none() {
@@ -354,10 +366,10 @@ pub fn run() {
             setup_tray(app)?;
             start_local_toggle_listener(app.handle());
             register_global_hotkey(app)?;
-            
+
             let app_handle = app.handle().clone();
             let state = app.state::<AppState>();
-            
+
             if let Ok(conn) = state.db.lock() {
                 if let Ok(Some(vault_path)) = get_vault_path_from_settings(&conn) {
                     if let Ok(vault_manager) = vault::VaultManager::new(&vault_path) {

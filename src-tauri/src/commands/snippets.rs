@@ -56,23 +56,24 @@ pub fn list_snippets(
         filters.push("s.pinned = 1".to_string());
     }
     if used_recent.unwrap_or(false) {
-        filters.push("s.last_used_at IS NOT NULL AND datetime(s.last_used_at) >= datetime('now', '-7 days')".to_string());
+        filters.push(
+            "s.last_used_at IS NOT NULL AND datetime(s.last_used_at) >= datetime('now', '-7 days')"
+                .to_string(),
+        );
     }
     if updated_today.unwrap_or(false) {
         filters.push("date(s.updated_at) = date('now')".to_string());
     }
     if has_tag {
         let tag_param = if has_query { "?2" } else { "?1" };
-        filters.push(
-            format!(
-                "s.id IN (
+        filters.push(format!(
+            "s.id IN (
                     SELECT st.snippet_id
                     FROM snippet_tags st
                     JOIN tags t ON st.tag_id = t.id
                     WHERE t.name = {tag_param}
                 )"
-            ),
-        );
+        ));
     }
 
     let select = if has_query {
@@ -252,8 +253,7 @@ pub fn delete_snippet(state: State<AppState>, id: String) -> Result<SnippetWithT
     sync_state::mark_snippet_deleted(&conn, &id)?;
     sync_state::queue_operation(&conn, &id, "delete", "delete")?;
 
-    let result = sync_state::load_snippet_with_tags(&conn, &id, true)?
-        .unwrap_or(snippet);
+    let result = sync_state::load_snippet_with_tags(&conn, &id, true)?.unwrap_or(snippet);
 
     drop(conn);
     kick_drive_sync(&state);
@@ -285,7 +285,14 @@ pub fn restore_snippet(
                  deleted_at = NULL,
                  sync_state = ?5
              WHERE id = ?6",
-            params![title, content, pinned as i64, now, sync_state::SYNC_STATUS_SYNCING, id],
+            params![
+                title,
+                content,
+                pinned as i64,
+                now,
+                sync_state::SYNC_STATUS_SYNCING,
+                id
+            ],
         )
         .map_err(|e| e.to_string())?;
     } else {
@@ -322,7 +329,12 @@ pub fn toggle_pin(state: State<AppState>, id: String) -> Result<bool, String> {
              device_updated_at = ?2,
              sync_state = CASE WHEN sync_state = ?4 THEN sync_state ELSE ?3 END
          WHERE id = ?1",
-        params![id, now, sync_state::SYNC_STATUS_SYNCING, sync_state::SYNC_STATUS_CONFLICTED],
+        params![
+            id,
+            now,
+            sync_state::SYNC_STATUS_SYNCING,
+            sync_state::SYNC_STATUS_CONFLICTED
+        ],
     )
     .map_err(|e| e.to_string())?;
 

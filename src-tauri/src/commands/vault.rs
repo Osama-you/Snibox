@@ -1,7 +1,7 @@
 use crate::db::models::SnippetWithTags;
 use crate::state::AppState;
 use crate::sync_state;
-use crate::vault::{VaultManager, SyncStats};
+use crate::vault::{SyncStats, VaultManager};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State};
@@ -38,11 +38,8 @@ fn save_vault_path_to_settings(conn: &Connection, path: &str) -> Result<(), Stri
 }
 
 fn clear_vault_path_from_settings(conn: &Connection) -> Result<(), String> {
-    conn.execute(
-        "DELETE FROM settings WHERE key = 'vault_folder'",
-        [],
-    )
-    .map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM settings WHERE key = 'vault_folder'", [])
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -70,7 +67,7 @@ pub fn set_vault_folder(
     path: String,
 ) -> Result<SyncStats, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
-    
+
     save_vault_path_to_settings(&conn, &path)?;
 
     let vault_manager = VaultManager::new(&path)?;

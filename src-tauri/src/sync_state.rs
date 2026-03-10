@@ -129,17 +129,18 @@ pub fn list_sync_activity(conn: &Connection, limit: i64) -> Result<Vec<SyncActiv
         )
         .map_err(|e| e.to_string())?;
 
-    let rows = stmt.query_map(params![limit], |row| {
-        Ok(SyncActivityItem {
-            id: row.get(0)?,
-            level: row.get(1)?,
-            action: row.get(2)?,
-            message: row.get(3)?,
-            snippet_id: row.get(4)?,
-            created_at: row.get(5)?,
+    let rows = stmt
+        .query_map(params![limit], |row| {
+            Ok(SyncActivityItem {
+                id: row.get(0)?,
+                level: row.get(1)?,
+                action: row.get(2)?,
+                message: row.get(3)?,
+                snippet_id: row.get(4)?,
+                created_at: row.get(5)?,
+            })
         })
-    })
-    .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?;
 
     rows.collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())
@@ -166,14 +167,15 @@ pub fn list_pending_queue(conn: &Connection) -> Result<Vec<SyncQueueItem>, Strin
         )
         .map_err(|e| e.to_string())?;
 
-    let rows = stmt.query_map([], |row| {
-        Ok(SyncQueueItem {
-            id: row.get(0)?,
-            snippet_id: row.get(1)?,
-            operation: row.get(2)?,
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(SyncQueueItem {
+                id: row.get(0)?,
+                snippet_id: row.get(1)?,
+                operation: row.get(2)?,
+            })
         })
-    })
-    .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?;
 
     rows.collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())
@@ -353,7 +355,11 @@ pub fn set_global_sync_status(
     needs_reauth: bool,
 ) -> Result<(), String> {
     set_drive_state(conn, "sync_status", sync_status)?;
-    set_drive_state(conn, "needs_reauth", if needs_reauth { "true" } else { "false" })?;
+    set_drive_state(
+        conn,
+        "needs_reauth",
+        if needs_reauth { "true" } else { "false" },
+    )?;
     if let Some(error) = last_error {
         set_drive_state(conn, "last_error", error)?;
     } else {
@@ -421,32 +427,48 @@ pub fn list_open_conflicts(conn: &Connection) -> Result<Vec<SyncConflictRecord>,
         )
         .map_err(|e| e.to_string())?;
 
-    let rows = stmt.query_map([], |row| {
-        let local_payload: String = row.get(4)?;
-        let remote_payload: String = row.get(5)?;
-        let local_snippet: SnippetWithTags = serde_json::from_str(&local_payload)
-            .map_err(|e| rusqlite::Error::FromSqlConversionFailure(4, rusqlite::types::Type::Text, Box::new(e)))?;
-        let remote_snippet: VaultSnippet = serde_json::from_str(&remote_payload)
-            .map_err(|e| rusqlite::Error::FromSqlConversionFailure(5, rusqlite::types::Type::Text, Box::new(e)))?;
+    let rows = stmt
+        .query_map([], |row| {
+            let local_payload: String = row.get(4)?;
+            let remote_payload: String = row.get(5)?;
+            let local_snippet: SnippetWithTags =
+                serde_json::from_str(&local_payload).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        4,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?;
+            let remote_snippet: VaultSnippet =
+                serde_json::from_str(&remote_payload).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        5,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?;
 
-        Ok(SyncConflictRecord {
-            id: row.get(0)?,
-            snippet_id: row.get(1)?,
-            reason: row.get(2)?,
-            status: row.get(3)?,
-            local_snippet,
-            remote_snippet,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
+            Ok(SyncConflictRecord {
+                id: row.get(0)?,
+                snippet_id: row.get(1)?,
+                reason: row.get(2)?,
+                status: row.get(3)?,
+                local_snippet,
+                remote_snippet,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
         })
-    })
-    .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?;
 
     rows.collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())
 }
 
-pub fn get_conflict(conn: &Connection, conflict_id: &str) -> Result<Option<SyncConflictRecord>, String> {
+pub fn get_conflict(
+    conn: &Connection,
+    conflict_id: &str,
+) -> Result<Option<SyncConflictRecord>, String> {
     let mut conflicts = conn
         .prepare(
             "SELECT id, snippet_id, reason, status, local_payload, remote_payload, created_at, updated_at
@@ -459,10 +481,22 @@ pub fn get_conflict(conn: &Connection, conflict_id: &str) -> Result<Option<SyncC
         .query_row(params![conflict_id], |row| {
             let local_payload: String = row.get(4)?;
             let remote_payload: String = row.get(5)?;
-            let local_snippet: SnippetWithTags = serde_json::from_str(&local_payload)
-                .map_err(|e| rusqlite::Error::FromSqlConversionFailure(4, rusqlite::types::Type::Text, Box::new(e)))?;
-            let remote_snippet: VaultSnippet = serde_json::from_str(&remote_payload)
-                .map_err(|e| rusqlite::Error::FromSqlConversionFailure(5, rusqlite::types::Type::Text, Box::new(e)))?;
+            let local_snippet: SnippetWithTags =
+                serde_json::from_str(&local_payload).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        4,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?;
+            let remote_snippet: VaultSnippet =
+                serde_json::from_str(&remote_payload).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        5,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?;
 
             Ok(SyncConflictRecord {
                 id: row.get(0)?,
@@ -616,7 +650,11 @@ pub fn get_tags_for_snippet(conn: &Connection, snippet_id: &str) -> Result<Vec<S
         .map_err(|e| e.to_string())
 }
 
-pub fn set_tags_for_snippet(conn: &Connection, snippet_id: &str, tags: &[String]) -> Result<(), String> {
+pub fn set_tags_for_snippet(
+    conn: &Connection,
+    snippet_id: &str,
+    tags: &[String],
+) -> Result<(), String> {
     conn.execute(
         "DELETE FROM snippet_tags WHERE snippet_id = ?1",
         params![snippet_id],
@@ -655,7 +693,8 @@ pub fn set_tags_for_snippet(conn: &Connection, snippet_id: &str, tags: &[String]
 }
 
 pub fn get_sync_status(conn: &Connection, connected: bool) -> Result<SyncStatusPayload, String> {
-    let raw_status = get_drive_state(conn, "sync_status")?.unwrap_or_else(|| SYNC_STATUS_IDLE.to_string());
+    let raw_status =
+        get_drive_state(conn, "sync_status")?.unwrap_or_else(|| SYNC_STATUS_IDLE.to_string());
     let sync_status = if connected {
         raw_status
     } else if get_drive_state(conn, "connected")?.as_deref() == Some("true") {
@@ -665,7 +704,8 @@ pub fn get_sync_status(conn: &Connection, connected: bool) -> Result<SyncStatusP
     };
 
     Ok(SyncStatusPayload {
-        provider: get_drive_state(conn, "provider")?.unwrap_or_else(|| PROVIDER_GOOGLE_DRIVE.to_string()),
+        provider: get_drive_state(conn, "provider")?
+            .unwrap_or_else(|| PROVIDER_GOOGLE_DRIVE.to_string()),
         connected: connected || get_drive_state(conn, "connected")?.as_deref() == Some("true"),
         sync_status,
         last_synced: get_drive_state(conn, "last_sync_time")?,
@@ -712,7 +752,9 @@ mod tests {
     fn records_conflicts_for_review() {
         let conn = setup_conn();
         insert_snippet(&conn, "snippet-1");
-        let local = load_snippet_with_tags(&conn, "snippet-1", true).unwrap().unwrap();
+        let local = load_snippet_with_tags(&conn, "snippet-1", true)
+            .unwrap()
+            .unwrap();
         let remote = VaultSnippet {
             id: "snippet-1".to_string(),
             title: Some("Remote".to_string()),
@@ -723,7 +765,8 @@ mod tests {
             updated_at: now_timestamp(),
         };
 
-        let conflict_id = record_conflict(&conn, "snippet-1", "remote_changed", &local, &remote).unwrap();
+        let conflict_id =
+            record_conflict(&conn, "snippet-1", "remote_changed", &local, &remote).unwrap();
         let conflict = get_conflict(&conn, &conflict_id).unwrap().unwrap();
         assert_eq!(conflict.reason, "remote_changed");
         assert_eq!(get_conflict_count(&conn).unwrap(), 1);

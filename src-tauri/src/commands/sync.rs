@@ -70,7 +70,12 @@ pub async fn resolve_sync_conflict(
         match resolution.strategy {
             ConflictResolutionStrategy::KeepLocal => {
                 sync_state::touch_snippet_for_sync(&conn, &conflict.snippet_id)?;
-                sync_state::queue_operation(&conn, &conflict.snippet_id, "upsert", "resolve_keep_local")?;
+                sync_state::queue_operation(
+                    &conn,
+                    &conflict.snippet_id,
+                    "upsert",
+                    "resolve_keep_local",
+                )?;
                 sync_state::close_conflict(&conn, &conflict_id, "resolved_keep_local")?;
                 sync_state::log_activity(
                     &conn,
@@ -96,7 +101,12 @@ pub async fn resolve_sync_conflict(
             ConflictResolutionStrategy::DuplicateBoth => {
                 sync_state::duplicate_remote_snippet(&conn, &conflict)?;
                 sync_state::touch_snippet_for_sync(&conn, &conflict.snippet_id)?;
-                sync_state::queue_operation(&conn, &conflict.snippet_id, "upsert", "resolve_duplicate_both")?;
+                sync_state::queue_operation(
+                    &conn,
+                    &conflict.snippet_id,
+                    "upsert",
+                    "resolve_duplicate_both",
+                )?;
                 sync_state::close_conflict(&conn, &conflict_id, "resolved_duplicate_both")?;
                 sync_state::log_activity(
                     &conn,
@@ -113,7 +123,9 @@ pub async fn resolve_sync_conflict(
                 let content = resolution
                     .content
                     .unwrap_or(conflict.local_snippet.snippet.content.clone());
-                let tags = resolution.tags.unwrap_or(conflict.local_snippet.tags.clone());
+                let tags = resolution
+                    .tags
+                    .unwrap_or(conflict.local_snippet.tags.clone());
                 let merged = VaultSnippet {
                     id: conflict.snippet_id.clone(),
                     title,
@@ -125,7 +137,12 @@ pub async fn resolve_sync_conflict(
                 };
                 sync_state::insert_or_replace_snippet(&conn, &merged)?;
                 sync_state::touch_snippet_for_sync(&conn, &conflict.snippet_id)?;
-                sync_state::queue_operation(&conn, &conflict.snippet_id, "upsert", "resolve_merge_manual")?;
+                sync_state::queue_operation(
+                    &conn,
+                    &conflict.snippet_id,
+                    "upsert",
+                    "resolve_merge_manual",
+                )?;
                 sync_state::close_conflict(&conn, &conflict_id, "resolved_merge_manual")?;
                 sync_state::log_activity(
                     &conn,

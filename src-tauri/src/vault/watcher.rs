@@ -1,4 +1,4 @@
-use notify::{Event, EventKind, RecursiveMode, Watcher, RecommendedWatcher};
+use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::Path;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::time::Duration;
@@ -9,11 +9,11 @@ pub struct VaultWatcher {
 }
 
 impl VaultWatcher {
-    pub fn new<P: AsRef<Path>>(
-        vault_path: P,
-        app_handle: AppHandle,
-    ) -> Result<Self, String> {
-        let (tx, rx): (Sender<notify::Result<Event>>, Receiver<notify::Result<Event>>) = channel();
+    pub fn new<P: AsRef<Path>>(vault_path: P, app_handle: AppHandle) -> Result<Self, String> {
+        let (tx, rx): (
+            Sender<notify::Result<Event>>,
+            Receiver<notify::Result<Event>>,
+        ) = channel();
         let snippets_dir = vault_path.as_ref().join("snippets");
 
         let mut watcher = notify::recommended_watcher(move |res: notify::Result<Event>| {
@@ -49,8 +49,6 @@ impl VaultWatcher {
             }
         });
 
-        Ok(Self {
-            _watcher: watcher,
-        })
+        Ok(Self { _watcher: watcher })
     }
 }

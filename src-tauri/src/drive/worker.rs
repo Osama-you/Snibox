@@ -51,7 +51,9 @@ impl SyncWorker {
         let max_backoff = Duration::from_secs(120);
 
         while let Some(job) = self.rx.recv().await {
-            let _ = self.app_handle.emit("drive-sync-status", sync_state::SYNC_STATUS_SYNCING);
+            let _ = self
+                .app_handle
+                .emit("drive-sync-status", sync_state::SYNC_STATUS_SYNCING);
             if let Ok(conn) = self.conn.lock() {
                 let _ = sync_state::set_global_sync_status(
                     &conn,
@@ -72,7 +74,9 @@ impl SyncWorker {
                             false,
                         );
                     }
-                    let _ = self.app_handle.emit("drive-sync-status", sync_state::SYNC_STATUS_IDLE);
+                    let _ = self
+                        .app_handle
+                        .emit("drive-sync-status", sync_state::SYNC_STATUS_IDLE);
                 }
                 Err(error) => {
                     let auth_error = error.contains("revoked") || error.contains("invalid_grant");
