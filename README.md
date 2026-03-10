@@ -83,14 +83,6 @@ Use normal text search plus operators:
 | `Cmd/Ctrl + Enter` | Save |
 | `Esc` | Cancel |
 
-## Demo Video Script
-
-A ready-to-read script is included here:
-
-- [docs/video-script.md](docs/video-script.md)
-
-Use it to record a short promo or a full walkthrough.
-
 ## Run Locally
 
 ### Prerequisites
