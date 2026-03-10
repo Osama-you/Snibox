@@ -1,61 +1,111 @@
-# Snibox
+<p align="center">
+  <img src="public/images/logo.png" alt="Snibox logo" width="120" />
+</p>
 
-A fast, keyboard-first snippet bank and paste launcher for Windows, macOS, and Linux.
+<h1 align="center">Snibox</h1>
 
-Built with [Tauri v2](https://v2.tauri.app/) + React + TypeScript.
+<p align="center">
+  <strong>Local-first, keyboard-first snippet launcher for Windows, macOS, and Linux.</strong><br />
+  Capture once. Find instantly. Paste in one keystroke.
+</p>
 
-## Features
+<p align="center">
+  <img alt="Tauri v2" src="https://img.shields.io/badge/Tauri-v2-24C8DB?style=for-the-badge&logo=tauri&logoColor=white" />
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=111" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
+  <img alt="Rust" src="https://img.shields.io/badge/Rust-1.77%2B-000000?style=for-the-badge&logo=rust&logoColor=white" />
+  <img alt="SQLite FTS5" src="https://img.shields.io/badge/SQLite-FTS5-003B57?style=for-the-badge&logo=sqlite&logoColor=white" />
+  <img alt="MIT License" src="https://img.shields.io/badge/License-MIT-1f8b4c?style=for-the-badge" />
+</p>
 
-- **Global hotkey** (`Ctrl+Shift+Space`) opens a floating search window
-- **Instant search** with FTS5 full-text search across titles, content, and tags
-- **One-keystroke copy** — press Enter to copy and auto-close
-- **Snippet editor** with title, multiline content, and tags
-- **Pin** frequently used snippets to the top
-- **Draft recovery** — never lose work on crash or accidental close
-- **In-app updates** — update without reinstalling
-- **Keyboard-first** — every action has a shortcut
+## Why Snibox
+
+Snibox is built for people who paste the same things all day: prompts, replies, SQL, shell snippets, ticket templates, links, and notes.
+
+- Open instantly with a global hotkey: `CmdOrCtrl+Shift+Space`
+- Search across title, content, and tags with SQLite FTS5
+- Paste selected snippet immediately with `Enter`
+- Pin important snippets to keep them at the top
+- Recover draft edits if the app closes unexpectedly
+- Keep data local-first, then sync to Google Drive when needed
+
+## Feature Highlights
+
+### Fast launcher workflow
+
+- Keyboard-first list navigation (`Up/Down`, `Enter`, `Esc`)
+- Create, edit, duplicate, delete, and undo delete from one surface
+- Quick preview modal for long snippets
+
+### Smart search and filters
+
+Use normal text search plus operators:
+
+| Pattern | Result |
+|---|---|
+| `#api` | Filter by tag |
+| `tag:billing` | Filter by tag (explicit) |
+| `is:pinned` | Show only pinned snippets |
+| `used:recent` | Show recently used snippets |
+| `updated:today` | Show snippets updated today |
+
+### Sync, safety, and portability
+
+- Google Drive sync with offline queueing
+- Conflict inbox for safe conflict resolution
+- Optional backup folder export/import flow
+- Built-in updater with in-place app updates
+
+### Personalization
+
+- Light, dark, or system theme
+- Accent color palettes
+- Customizable keyboard shortcuts
 
 ## Keyboard Shortcuts
 
 ### Launcher
 
 | Shortcut | Action |
-|----------|--------|
-| `Ctrl/⌘ + N` | New snippet |
-| `↑ / ↓` | Navigate list |
-| `Enter` | Copy selected + close |
-| `Ctrl/⌘ + E` | Edit selected |
-| `Ctrl/⌘ + P` | Pin/unpin |
-| `Delete` | Delete (with undo) |
-| `Escape` | Close window |
+|---|---|
+| `Cmd/Ctrl + N` | New snippet |
+| `Up / Down` | Move selection |
+| `Enter` | Paste selected snippet |
+| `Cmd/Ctrl + E` | Edit selected |
+| `Cmd/Ctrl + P` | Pin/unpin selected |
+| `Delete` | Delete selected (with undo) |
+| `Esc` | Close launcher |
 
 ### Editor
 
 | Shortcut | Action |
-|----------|--------|
-| `Ctrl/⌘ + Enter` | Save |
-| `Escape` | Cancel (confirms if unsaved) |
+|---|---|
+| `Cmd/Ctrl + Enter` | Save |
+| `Esc` | Cancel |
 
-## Development
+## Demo Video Script
+
+A ready-to-read script is included here:
+
+- [docs/video-script.md](docs/video-script.md)
+
+Use it to record a short promo or a full walkthrough.
+
+## Run Locally
 
 ### Prerequisites
 
 - [Rust](https://rustup.rs/) (1.77+)
 - [Node.js](https://nodejs.org/) (20+)
 - [pnpm](https://pnpm.io/)
-- System dependencies for Tauri (see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/))
+- Tauri system dependencies: [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
 
 ### Setup
 
 ```bash
 pnpm install
-pnpm tauri dev
-```
-
-Create local env file before first run:
-
-```bash
 cp .env.example .env
+pnpm tauri dev
 ```
 
 ### Build
@@ -64,7 +114,7 @@ cp .env.example .env
 pnpm tauri build
 ```
 
-### Release
+## Release
 
 ```bash
 ./scripts/bump-version.sh 0.2.0
@@ -73,23 +123,20 @@ git tag v0.2.0
 git push && git push --tags
 ```
 
-Pushing a `v*` tag triggers the release workflow on GitHub Actions.
+Pushing a `v*` tag triggers the GitHub Actions release workflow.
 
-Versioning follows SemVer (`MAJOR.MINOR.PATCH`). Use `scripts/bump-version.sh` so all version fields stay in sync.
-
-The release workflow also injects updater settings at build time:
+Updater environment variables used in CI:
 
 - `SNIBOX_UPDATER_REPOSITORY` (from `github.repository`)
 - `SNIBOX_UPDATER_PUBKEY` (from GitHub secret `TAURI_PUBLIC_KEY`)
 
-This ensures installed users can receive in-app updates from GitHub Releases without reinstalling.
-
 ## Architecture
 
-- **Frontend**: React 19, Zustand, Tailwind CSS, Vite
-- **Backend**: Tauri v2, Rust, SQLite (rusqlite) with FTS5
-- **Updates**: tauri-plugin-updater with GitHub Releases
-- **Shortcuts**: tauri-plugin-global-shortcut (system-wide), React keybind hooks (in-app)
+- Frontend: React 19, TypeScript, Zustand, Tailwind CSS, Vite
+- Desktop runtime: Tauri v2 + Rust
+- Storage: SQLite (`rusqlite`) + FTS5 search
+- Sync: Google Drive auth + sync conflict handling
+- Updates: `tauri-plugin-updater`
 
 ## License
 
