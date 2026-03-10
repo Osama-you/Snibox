@@ -89,7 +89,7 @@ export function SyncCenter({
   compact = false,
   onRetry,
   onOpenConflicts,
-  onCopyDiagnostics,
+  onCopyDiagnostics: _onCopyDiagnostics,
 }: SyncCenterProps) {
   const hasConflicts = (status?.conflictCount ?? 0) > 0;
 
